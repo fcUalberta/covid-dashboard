@@ -20,7 +20,7 @@ def forecast(data):
         model_fit = model.fit(disp=False)
 
         yhat = model_fit.predict(len(data), len(data))
-        print(yhat)
+        # print(yhat)
         data.append(int(yhat))
         predictions.append(int(yhat))
     return predictions
