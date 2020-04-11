@@ -41,7 +41,7 @@ def data_ingest():
     combined_df.loc[combined_df['Death'] == 0, 'Fatality Rate'] = 0
     combined_df.loc[combined_df['Death'] > 0, 'Fatality Rate'] = round((combined_df['Death']/combined_df['Confirmed'])*100,2)
     combined_df.loc[combined_df['Confirmed'] == 0, 'Fatality Rate'] = 0
-    
+
     combined_df = combined_df.sort_values(['Country/Region','Province/State','Date'], ascending = False)
     # print(combined_df_copy)
 
@@ -66,10 +66,14 @@ def data_ingest():
 
     # Grouping by countries and Date -> Result : Countries with all days
     aggregations = { 'Lat':'first','Long':'first','Confirmed':'sum',
-    'Active':'sum','Death':'sum','Recovered':'sum','Fatality Rate':'mean',
+    'Active':'sum','Death':'sum','Recovered':'sum',
     'New Confirmed':'sum','New Death':'sum','New Recovered':'sum'}
     countryDays_df=combined_df.groupby(["Country/Region","Date"],as_index=False).agg(aggregations) #groupby Country and Date values
 
+    countryDays_df.loc[countryDays_df['Death'] == 0, 'Fatality Rate'] = 0
+    countryDays_df.loc[countryDays_df['Death'] > 0, 'Fatality Rate'] = round((countryDays_df['Death']/countryDays_df['Confirmed'])*100,2)
+    countryDays_df.loc[countryDays_df['Confirmed'] == 0, 'Fatality Rate'] = 0
+    # print(countryDays_df.isnull().sum())
     # Finding the latest date
     latest_date = combined_df['Date'].max() #Finding latest date
 
@@ -83,9 +87,14 @@ def data_ingest():
 
     # Grouping by countries alone -> Result: Countries with latest dates
     aggregations = { 'Lat':'first','Long':'first','Confirmed':'sum','Date':'first',
-    'Active':'sum','Death':'sum','Recovered':'sum','Fatality Rate':'mean',
+    'Active':'sum','Death':'sum','Recovered':'sum',
     'New Confirmed':'sum','New Death':'sum','New Recovered':'sum'}
     countryLatest_df=latest_df_copy.groupby("Country/Region",as_index=False).agg(aggregations) #groupby Country values
+
+    countryLatest_df.loc[countryLatest_df['Death'] == 0, 'Fatality Rate'] = 0
+    countryLatest_df.loc[countryLatest_df['Death'] > 0, 'Fatality Rate'] = round((countryLatest_df['Death']/countryLatest_df['Confirmed'])*100,2)
+    countryLatest_df.loc[countryLatest_df['Confirmed'] == 0, 'Fatality Rate'] = 0
+    # print(countryDays_df.isnull().sum())
     countryLatest_df.to_csv(r'countries.csv',index=False,sep='\t' )
 
     canada_df = latest_df.loc[latest_df['Country/Region'] == 'Canada']
