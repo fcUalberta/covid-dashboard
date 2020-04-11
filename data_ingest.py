@@ -82,6 +82,8 @@ def data_ingest():
     latest_df =  latest_df.reset_index(drop=True)
     for c in ['Lat','Long','Confirmed','Death','Active','Recovered','New Confirmed','New Death','New Recovered']:
         latest_df[c] = pd.to_numeric(latest_df[c], errors='coerce',downcast='integer')
+    latest_df.to_csv(r'latest_df.csv',index=False,sep='\t' )
+
     # Creating a copy
     latest_df_copy=latest_df.drop(['Province/State'],axis=1)
 
@@ -111,6 +113,15 @@ def data_ingest():
     for c in ['Population','Cases Per Population']:
         canada_df[c] = pd.to_numeric(canada_df[c], errors='coerce',downcast='integer')
     # print(canada_df)
+    aggregations = {'Confirmed':'sum',
+    'Active':'sum','Death':'sum','Recovered':'sum', 'New Confirmed':'sum', 'New Death':'sum', 'New Recovered':'sum', 'Fatality Rate':'mean'}
+    sum_df=countryDays_df.groupby("Date",as_index=False).agg(aggregations) #groupby Date values
+    sum_df.to_csv(r'sumdf.csv',index=False,sep='\t')
+
+    # print(sum_df)
+
+    countryDays_df.to_csv(r'countryDays_df.csv',index=False,sep='\t' )
+#
 #
     # print(combined_df,base_df,countryDays_df,latest_df, countryLatest_df.head())
     # print(latest_df.dtypes)
