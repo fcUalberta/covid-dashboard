@@ -39,8 +39,9 @@ def data_ingest():
     combined_df['Active'] = pd.to_numeric(combined_df['Active'], errors='coerce',downcast='integer')
     # Adding Fatality field
     combined_df.loc[combined_df['Death'] == 0, 'Fatality Rate'] = 0
-    combined_df.loc[combined_df['Death'] > 0, 'Fatality Rate'] = combined_df['Death']/combined_df['Confirmed']
-
+    combined_df.loc[combined_df['Death'] > 0, 'Fatality Rate'] = round((combined_df['Death']/combined_df['Confirmed'])*100,2)
+    combined_df.loc[combined_df['Confirmed'] == 0, 'Fatality Rate'] = 0
+    
     combined_df = combined_df.sort_values(['Country/Region','Province/State','Date'], ascending = False)
     # print(combined_df_copy)
 
@@ -75,7 +76,8 @@ def data_ingest():
     # Countries and provinces with latest date only
     latest_df=base_df.loc[base_df.Date == latest_date].copy()
     latest_df =  latest_df.reset_index(drop=True)
-
+    for c in ['Lat','Long','Confirmed','Death','Active','Recovered','New Confirmed','New Death','New Recovered']:
+        latest_df[c] = pd.to_numeric(latest_df[c], errors='coerce',downcast='integer')
     # Creating a copy
     latest_df_copy=latest_df.drop(['Province/State'],axis=1)
 
@@ -86,8 +88,22 @@ def data_ingest():
     countryLatest_df=latest_df_copy.groupby("Country/Region",as_index=False).agg(aggregations) #groupby Country values
     countryLatest_df.to_csv(r'countries.csv',index=False,sep='\t' )
 
+    canada_df = latest_df.loc[latest_df['Country/Region'] == 'Canada']
+    canada_pop = {'Province/State': ['Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
+        'Northwest Territories', 'Nova Scotia', 'Ontario', 'Prince Edward Island',  'Quebec', 'Saskatchewan', 'Yukon','Nunavut'],
+        'Population': [4413146, 5110917, 1377517, 779993, 521365, 44904, 977457, 14711827, 158158, 8537674, 1181666, 41078, 39097]
+    }
+    canada_pop_df = pd.DataFrame.from_dict(canada_pop)
+    canada_df = pd.merge(canada_df,canada_pop_df,how = 'left',on = 'Province/State').fillna(0)
+    # print(canada_df.dtypes)
+    canada_df.loc[canada_df['Population'] == 0, 'Cases Per Population'] = 0
+    canada_df.loc[canada_df['Population'] > 0, 'Cases Per Population'] = round((canada_df['Confirmed']/canada_df['Population'])*100000)
+
+    for c in ['Population','Cases Per Population']:
+        canada_df[c] = pd.to_numeric(canada_df[c], errors='coerce',downcast='integer')
+    # print(canada_df)
 #
     # print(combined_df,base_df,countryDays_df,latest_df, countryLatest_df.head())
-
-    return base_df,countryDays_df,latest_df, countryLatest_df
+    # print(latest_df.dtypes)
+    return base_df,countryDays_df,latest_df, countryLatest_df,canada_df
 # data_ingest()

@@ -5,6 +5,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 import plotly.graph_objs as go
 import plotly.express as px
+import plotly.figure_factory as ff
 import pandas as pd
 from plotly.subplots import make_subplots
 from datetime import datetime as dt
@@ -24,8 +25,8 @@ from forecasting import forecast
 # countryDays_df -> Country Df with all days
 # latest_df -> Countries and provinces with latest date
 # country_df -> Countries with latest date
-df,countryDays_df,latest_df, country_df = data_ingest()
-print("Date:",df['Date'].max())
+df,countryDays_df,latest_df, country_df,canada_df = data_ingest()
+# movingAvg_df = create_movingAverage(countryDays_df)
 
 # df = pd.read_csv("covid.csv",sep='\t')
 epoch = datetime.datetime.utcfromtimestamp(0)
@@ -54,6 +55,11 @@ target_options = [{'label': 'Confirmed', 'value': 'Confirmed'},
 target_options1 = [{'label': 'Confirmed', 'value': 'Confirmed'},
                         {'label': 'Death', 'value': 'Death'},
                         {'label': 'Recovered', 'value': 'Recovered'}]
+target_options2 = [{'label': i, 'value': i} for i in [
+                    'Confirmed','Active','Death','Recovered',
+                    'New Confirmed', 'New Death', 'New Recovered']]
+target_options3 = [{'label': i, 'value': i} for i in [
+                    'New Confirmed', 'New Death', 'New Recovered']]
 
 top_options =  [{'label': 'Top 20', 'value': 'Top 20'},
                         {'label': 'Top 30', 'value': 'Top 30'},
@@ -62,6 +68,21 @@ top_options =  [{'label': 'Top 20', 'value': 'Top 20'},
 countries_options = [{'label': 'Top 10', 'value': 'Top 10'},
                         {'label': 'G7', 'value': 'G7'},
                         {'label': 'BRICS', 'value': 'BRICS'}]
+scale_options = [{'label': i, 'value': i} for i in ['Linear', 'Log']]
+moving_average_options = [{'label': i, 'value': i} for i in ['Simple',
+                        'Cumulative', 'Exponential']]
+
+country_options = [{'label': 'Global', 'value': 'Global'}]
+option_df = latest_df.loc[latest_df['Province/State']!=0]
+cols = list(option_df['Country/Region'].unique())
+for i in range(len(cols)):
+    country_options.append({'label':cols[i],'value':cols[i]})
+
+country_options1 = [{'label': 'Global', 'value': 'Global'}]
+# option_df = latest_df.loc[latest_df['Province/State']!=0]
+cols = list(country_df['Country/Region'])
+for i in range(len(cols)):
+    country_options1.append({'label':cols[i],'value':cols[i]})
 
 """ ###################################################
 Custom Styling
@@ -75,9 +96,17 @@ colors = {
     'text1':'#000000',
     'graph_bg_color':'#FFFFFF',
     'graph_text':'#000000',
-    'heading':'#C01414'
+    'heading':'#C01414',
+    'graph_title1':'#C01414',
+    'titlebox_border':'thin lightgrey solid',
+    'titlebox_background':'rgb(250, 250, 250)',
     # 'analytics_tab_color':''
 }
+
+title_box = {
+    'borderBottom': colors['titlebox_border'],
+    'backgroundColor': colors['titlebox_background'],
+            'padding': '10px 5px'}
 tabs_styles = {
     'height': '44px'
 }
@@ -122,10 +151,11 @@ content = {
 }
 chart_box = {
   'box-shadow': '3px 3px 3px 3px lightgrey',
-  'padding-top':'2px',"width": "900px",
-  "margin": "0 auto",
-  'backgroundColor':colors['background'],
-  'plot_bgcolor': colors['background']
+  'padding-top':'2px',
+  'padding-left':'10px',
+  "margin": "5px",
+  'backgroundColor':colors['graph_bg_color'],
+  'plot_bgcolor': colors['graph_bg_color']
 }
 overlay = {'opacity':'0.8',
 'background-color':'#000000',
@@ -146,10 +176,10 @@ page = {
 
 # Calling external stylesheet
 # external_stylesheets=['https://github.com/plotly/dash-sample-apps/blob/master/apps/dash-web-trader/assets/style.css']
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+# external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+# app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # Initializing Dash app
-# app = dash.Dash(__name__)
+app = dash.Dash(__name__)
 server = app.server
 
 
@@ -213,26 +243,28 @@ app.layout = html.Div(children=[
         style=tab_style,
         selected_style=tab_selected_style,
         children = [
+            html.Div([
             html.Div(style = {"padding":10}),# For vertical space
             html.Div([
+                html.H2("Corona Virus Canada Cases by Province",
+                style={'text-align':'center', 'color':colors["heading"]},
+                className = "container"),
+                html.P("Hover over the provinces to view the trends in the graphs",
+                    style = {'text-align':'center','color':colors['text1'], 'font-style':'italic'}),
+            ], style= title_box),
+            html.Div(style = {"padding":10}),# For vertical space
+            html.Div([
+
                 html.Div([
-                    dcc.Graph(id='canada1',style = {"height":"70vh"},hoverData={'points': [{'customdata': 'Alberta'}]}),
-                    # dcc.Slider(
-                    #     id='date-slider1',
-                    #     min=unix_time_millis(df['Date'].min()),
-                    #     max=unix_time_millis(df['Date'].max()),
-                    #     value=unix_time_millis(df['Date'].max()),
-                    #     marks=get_marks_from_start_end(df['Date'].min(),
-                    #                                   df['Date'].min()),
-                    #     step=None
-                    # )
+                    dcc.Graph(id='canada1',style = {"height":"55vh"},hoverData={'points': [{'customdata': 'Alberta'}]}),
+
                 ],style = graph_style,className="six columns"),
                 html.Div([
-                    dcc.Graph(id='canada2',style = {"height":"70vh"},hoverData={'points': [{'customdata': 'Alberta'}]}),
+                    dcc.Graph(id='canada2',style = {"height":"55vh"},hoverData={'points': [{'customdata': 'Alberta'}]}),
                 ],style = graph_style,className="six columns"),
 
             ],className="row"),
-            html.Div(style = {"padding":20}),# For vertical space
+            html.Div(style = {"padding":10}),# For vertical space
             html.Div([
                 html.Div([
                     html.Div([
@@ -251,6 +283,7 @@ app.layout = html.Div(children=[
                     ],className="three columns"),
                 ]),
             ],style = graph_style),
+            ]),
         ]), # End of Tab 2
 
         # Tab 3
@@ -262,23 +295,25 @@ app.layout = html.Div(children=[
             html.Div([
                 html.Div([
                     html.Div(style = {"padding":20}),# For vertical space
-                    html.H2("Number of days since first case Vs current figures",
-                    style={'text-align':'center', 'color':colors["heading"]},
-                    className = "container"),
+                    html.Div([
+                        html.H2("Number of days since first case Vs current figures",
+                        style={'text-align':'center', 'color':colors["heading"]},
+                        className = "container"),
+                    ], style= title_box,),
                     html.Div(style = {"padding":10}),# For vertical space
                     html.Div([
                         html.Div([
-                            html.P("Select the number"),
+                            html.P("Select the data"),
                             dcc.Dropdown(
                                    id='tab-3-Dropdown1',
                                    options=target_options1,
                                    value='Confirmed',
-                                   style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
+                                   style={'width':'60%', 'text-align':'left', 'color':colors["text1"],'float':'center'}
                                ),
                         ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
                         html.Div([
 
-                              html.P("Select the Option"),
+                              html.P("Select the number"),
                               dcc.Dropdown(
                                   id='tab-3-Dropdown2',
                                   options=top_options,
@@ -286,54 +321,101 @@ app.layout = html.Div(children=[
                                   style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
                               ),
                           ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
-                    ], style={  'borderBottom': 'thin lightgrey solid',
-                                'backgroundColor': 'rgb(250, 250, 250)',
-                                'padding': '10px 5px'},className = "container"),
+                    ], style=title_box,className = "container"),
 
                     html.Div(style = {"padding":20}),# For vertical space
                     html.Div([
                        dcc.Graph(
                                    id='no-of-days',
-                                   style = {"height":"100vh",'float':'center'}),
+                                   style = {"height":"80vh",'float':'center'}),
                     ],style=graph_style),
 
                 ]), # End of Div for first graph
                 html.Div([
                     html.Div(style = {"padding":20}),# For vertical space
-                    html.H2("Number of days since first case Vs current figures",
+                    html.Div([
+                    html.H2("Hierarchical contribution by Countries and Provinces/States",
                     style={'text-align':'center', 'color':colors["heading"]},
                     className = "container"),
+                    ], style= title_box,className = "container"),
                     html.Div(style = {"padding":10}),# For vertical space
                     html.Div([
-                    html.P("Select the data"),
-                    dcc.Dropdown(
-                           id='tab-3-Dropdown3',
-                           options=target_options1,
-                           value='Confirmed',
-                           style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
-                       ),
-                      # html.P("Select the Option"),
-                       # dcc.Dropdown(
-                       #        id='tab-3-Dropdown2',
-                       #        options=top_options,
-                       #        value="Top 20",
-                       #        style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
-                       #    ),
-                    ],className = "container"),
+                    html.Div([
+                        html.P("Select Global/Country"),
+                        dcc.Dropdown(
+                               id='tab-3-Dropdown3',
+                               options=country_options,
+                               value='Global',
+                               style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
+                           ),
+                    ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
+                    html.Div([
+
+                          html.P("Select the data"),
+                           dcc.Dropdown(
+                                  id='tab-3-Dropdown4',
+                                  options=target_options2,
+                                  value="Confirmed",
+                                  style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
+                              ),
+                      ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
+
+                    ],style = title_box, className = "container"),
 
                     html.Div(style = {"padding":20}),# For vertical space
-                    # html.Div([
-                    #    dcc.Graph(
-                    #                id='sankey',
-                    #                style = {"height":"100vh",'float':'center'}),
-                    # ],style=graph_style),
+                    # html.Div(style = {"padding":20}),# For vertical space
+                    html.Div([
+                       dcc.Graph(
+                                   id='treemap',
+                                   style = {"height":"80vh",'float':'center'}),
+                    ],style=graph_style),
 
-                ]), # End of Div for first graph
+                ]), # End of Div for second graph
+                html.Div([
+                    html.Div(style = {"padding":20}),# For vertical space
+                    html.Div([
+                    html.H2("Calendar Heatmap of new cases Globally and by Countries",
+                    style={'text-align':'center', 'color':colors["heading"]},
+                    className = "container"),
+                    ], style= title_box,className = "container"),
+                    html.Div(style = {"padding":10}),# For vertical space
+                    html.Div([
+                    html.Div([
+                        html.P("Select Global/Country"),
+                        dcc.Dropdown(
+                               id='tab-3-Dropdown5',
+                               options=country_options1,
+                               value='Global',
+                               style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
+                           ),
+                    ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
+                    html.Div([
+
+                          html.P("Select the data"),
+                           dcc.Dropdown(
+                                  id='tab-3-Dropdown6',
+                                  options=target_options3,
+                                  value="New Confirmed",
+                                  style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
+                              ),
+                      ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
+
+                    ],style = title_box, className = "container"),
+
+                    html.Div(style = {"padding":20}),# For vertical space
+                    # html.Div(style = {"padding":20}),# For vertical space
+                    html.Div([
+                       dcc.Graph(
+                                   id='heatmap',
+                                   style = {"height":"80vh",'float':'center'}),
+                    ],style=graph_style),
+
+                ]), # End of Div for third graph
             ])
 
             ]), # End of Tab 3
         # Tab 4
-        dcc.Tab(label='Weekly Forecast',
+        dcc.Tab(label='Weekly Forecast & Trends',
         value='tab-4',
         style=tab_style,
         selected_style=tab_selected_style,
@@ -341,9 +423,12 @@ app.layout = html.Div(children=[
             html.Div([
                 html.Div([
                     html.Div(style = {"padding":20}),# For vertical space
-                    html.H2("Current Trend and Forecast for a Week",
-                        style={'text-align':'center', 'color':colors["heading"]},
-                        className = "container"),
+                    html.Div([
+                        html.H2("Current Trend and Forecast for a Week",
+                            style={'text-align':'center', 'color':colors["heading"]},
+                            className = "container"),
+
+                    ], style=title_box,className = "container"),
                     html.Div(style = {"padding":10}),# For vertical space
                     html.Div([
                         html.Div([
@@ -352,9 +437,9 @@ app.layout = html.Div(children=[
                                    id='tab-4-Dropdown1',
                                    options=target_options,
                                    value='Confirmed',
-                                   style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
+                                   style={'width':'70%', 'text-align':'left', 'color':colors["text1"]}
                                ),
-                        ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
+                        ], style={'width': '50%', 'float': 'right', 'display': 'inline-block'}),
                         html.Div([
 
                               html.P("Select the Countries"),
@@ -362,27 +447,92 @@ app.layout = html.Div(children=[
                                       id='tab-4-Dropdown2',
                                       options=countries_options,
                                       value='Top 10',
-                                      style={'width':'60%', 'text-align':'left', 'color':colors["text1"]}
+                                      style={'width':'70%', 'text-align':'left', 'color':colors["text1"]}
                                   ),
-                          ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'}),
-                    ], style={  'borderBottom': 'thin lightgrey solid',
-                                'backgroundColor': 'rgb(250, 250, 250)',
-                                'padding': '10px 5px'},className = "container"),
+                          ], style={'width': '50%', 'float': 'right', 'display': 'inline-block'}),
+                        # html.Div([
+                        #       html.P("Select the Scale"),
+                        #        dcc.RadioItems(
+                        #               id='tab-4-scale',
+                        #               options=scale_options,
+                        #               value='Linear',
+                        #               labelStyle={'display': 'inline-block'},
+                        #               style={'width':'100%', 'text-align':'left', 'color':colors["text1"]}
+                        #           ),
+                        #   ], style={'width': '30%', 'float': 'right', 'display': 'inline-block'}),
+                    ], style=title_box,className = "container"),
 
                     html.Div(style = {"padding":10}),# For vertical space
                     html.Div([
                        dcc.Graph(
                                    id='forecast',
                                    style = {"height":"80vh"},
-                                   className = "ten columns"),
-                     # html.Div([
-                     #                            html.Div([
-                     #        html.H6("Budget",style=content),
-                     #        html.Div(id='card11',style=it_content)
-                     #    ], style= graph_style,className="four columns"),
-                     #
-                     # ])
-                    ],style = graph_style,className="row"),
+                                   className = "twelve columns"),
+                    ],style = chart_box,className="row"),
+
+                html.Div([ # starting next row
+                    html.Div([
+                        html.Div(style = {"padding":20}),# For vertical space
+                        html.H2("Weekly Moving Average of New Cases Vs Total",
+                            style={'text-align':'center', 'color':colors["heading"]},
+                            className = "container"),
+
+                    ], style=title_box,className = "container"),
+                    html.Div(style = {"padding":10}),# For vertical space
+                    html.Div([
+                        # html.Div([
+                        #     html.P("Select the type of Moving Average"),
+                        #     dcc.Dropdown(
+                        #            id='tab-4-Dropdown3',
+                        #            options= moving_average_options,
+                        #            value='Simple',
+                        #            style={'width':'80%', 'text-align':'left', 'color':colors["text1"]}
+                        #        ),
+                        # ], style={'width': '30%', 'float': 'right', 'display': 'inline-block'}),
+                        html.Div([
+                              html.P("Select the Scale"),
+                               dcc.RadioItems(
+                                      id='tab-4-scale',
+                                      options=scale_options,
+                                      value='Linear',
+                                      labelStyle={'display': 'inline-block'},
+                                      style={'width':'80%', 'text-align':'left', 'color':colors["text1"]}
+                                  ),
+                          ], style={'width': '40%', 'float': 'right', 'display': 'inline-block'}),
+                        html.Div([
+                            html.P("Select the data"),
+                            dcc.Dropdown(
+                                   id='tab-4-Dropdown4',
+                                   options=target_options1,
+                                   value='Confirmed',
+                                   style={'width':'80%', 'text-align':'left', 'color':colors["text1"]}
+                               ),
+                        ], style={'width': '40%', 'float': 'right', 'display': 'inline-block'}),
+                        # html.P('Linear scale shows linear progression on both axes and log scale shows logarithmic progression.'+
+                        #  "Linear scale gives overall trend of new cases. Logarithmic scale goes a steep upward trend and then gives a "+
+                        #  " huge dip when there is a regular decrease")
+                        # html.Div([
+                        #
+                        #       html.P("Select the Countries"),
+                        #        dcc.Dropdown(
+                        #               id='tab-4-Dropdown5',
+                        #               options=countries_options,
+                        #               value='Top 10',
+                        #               style={'width':'80%', 'text-align':'left', 'color':colors["text1"]}
+                        #           ),
+                        #   ], style={'width': '30%', 'float': 'right', 'display': 'inline-block'}),
+
+                    ], style=title_box,className = "container"),
+
+                    html.Div(style = {"padding":10}),# For vertical space
+                    html.Div([
+                       dcc.Graph(
+                                   id='moving-average',
+                                   style = {"height":"80vh"},
+                                   className = "twelve columns"),
+                    ],style = chart_box,className="row"),
+
+                    ]),
 
                 ]), # End of Div for first graph
             ])
@@ -427,26 +577,35 @@ def update_table(column):
         return fig
 
 
-def canada_map(canada_df,column,n):
+def canada_map(column,n):
     fig = go.Figure()
     # py.sign_in('username', 'api_key')
-    canada_df = canada_df[canada_df['Location']!='Canada']
+    selected_df = canada_df[~canada_df['Location'].isin(['Canada','Diamond Princess','Grand Princess'])]
+    print(selected_df['Location'])
+
+
+    my_text = ['Confirmed Cases: '+'{:,d}'.format(confirmed)+'<br>Deaths:'+'{:,d}'.format(deaths)+
+  '<br>Recovered: '+'{:,d}'.format(recovered)+'<br>Fatality Rate:'+'{:.2f} %'.format(fatality)+
+  '<br>Latest New Cases: '+'{:,d}'.format(new_cases)+'<br>Cases per 100,000 :'+'{:,d}'.format(ratio)
+  for confirmed, deaths, recovered, fatality, new_cases, ratio
+    in zip(list(selected_df['Confirmed']), list(selected_df['Death']),
+    list(selected_df['Recovered']), list(selected_df['Fatality Rate']),
+      list(selected_df['New Confirmed']), list(selected_df['Cases Per Population'])) ]
+
     trace1 = {"uid": "1a57419c-8c71-11e8-b0f0-089e0178c4cf",
     "mode": "markers+text", "name": "",
     "type": "scattergeo",
-    "lat": list(canada_df['Lat']),
-    "lon": list(canada_df['Long']),
+    "lat": list(selected_df['Lat']),
+    "lon": list(selected_df['Long']),
       "marker": {
         "line": {"width": 1},
-        "size": list(canada_df[column]/n),
-        "color": list(canada_df[column]/n),
-
-
-
+        "size": list(selected_df[column]/n),
+        "color": list(selected_df[column]/n),
         # "color": ["#bebada", "#fdb462", "#fb8072", "#d9d9d9", "#bc80bd", "#b3de69", "#8dd3c7", "#80b1d3", "#fccde5", "#ffffb3"]
       },
-      'customdata': canada_df['Location'],
-      "text": list(canada_df['Location']),
+      'customdata': selected_df['Location'],
+      'text':  selected_df['Location'],
+      'hovertemplate' :my_text,
       "textfont": {
         "size":10,
         # "color": ["#bebada", "#fdb462", "#fb8072", "#d9d9d9", "#bc80bd", "#b3de69", "#8dd3c7", "#80b1d3", "#fccde5", "#ffffb3"],
@@ -463,46 +622,52 @@ def canada_map(canada_df,column,n):
             "lonaxis": {"range": [-140, -30]}
           },
           'clickmode': 'event+select',
-          "title": "Canada: "+column}
+          'dragmode': False,
+          'margin': dict(l=60, r=10, t=20, b=5, autoexpand = True),
+          "title": "Canada: "+column,
+          'title_x':0.5,
+          'title_y':0.96    ,
+          'titlefont': dict(
+              color=colors['text1'],
+              size=22)
+    }
     fig = Figure(data=data, layout=layout)
     return fig
 
 @app.callback(Output('canada1','figure'),
         [Input('tab-3-Dropdown1','value')])
 def update_figure(val):
-    # dff = df[df['Date'] == date]
-    canada_df = latest_df.loc[latest_df['Country/Region'] == 'Canada']
-    column = "Confirmed"
-    fig = canada_map(canada_df,"Confirmed",100)
+
+    fig = canada_map("Confirmed",100)
     return fig
 
 @app.callback(Output('canada2','figure'),
         [Input('tab-3-Dropdown1','value')])
 def update_figure(val):
-    canada_df = latest_df.loc[latest_df['Country/Region'] == 'Canada']
-    fig = canada_map(canada_df,"Death",5)
+    # canada_df = latest_df.loc[latest_df['Country/Region'] == 'Canada']
+    fig = canada_map("Death",5)
     return fig
 
-# @app.callback(Output('canada3','figure'),
-#         [Input('tab-3-Dropdown1','value')])
-# def update_figure(val):
-#     canada_df = latest_df.loc[latest_df['Country/Region'] == 'Canada']
-#     fig = canada_map(canada_df,"Recovered",10)
-#     return fig
 
 @app.callback(Output('canada1-line','figure'),
         [Input('canada1','hoverData')])
 def update_figure(hoverData):
     province = hoverData['points'][0]['customdata']
     province_df = df.loc[df['Location'] == province]
+    province_df = province_df.loc[province_df['Confirmed'] != 0]
     # dff = df[df['Country Name'] == hoverData['points'][0]['customdata']]
     # print(province_df.head())
     fig = go.Figure(go.Scatter(x=province_df['Date'], y=province_df['Confirmed'],
-                    mode='lines+markers',
+                    mode='lines+markers',marker_color='orange',
                     name=province))
     fig.update_layout(
-    title= province + " : Confirmed Cases",
-
+    title= province + " : Cumulative Confirmed Cases",
+    title_x= 0.5,
+    titlefont= dict(
+        color=colors['heading'],
+        size=18
+    ),
+    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     # fig = px.scatter(province_df,x="Date",y="Confirmed",mode = "line+markers")
@@ -513,11 +678,17 @@ def update_figure(hoverData):
 def update_figure(hoverData):
     province = hoverData['points'][0]['customdata']
     province_df = df.loc[df['Location'] == province]
+    province_df = province_df.loc[province_df['New Confirmed'] != 0]
     fig = go.Figure(go.Bar(x=province_df['Date'], y=province_df['New Confirmed'],
-                        name=province))
+                        name=province, marker_color='orange'))
     fig.update_layout(
     title= province + " : New Confirmed Cases",
-
+    title_x= 0.5,
+    titlefont= dict(
+        color=colors['heading'],
+        size=18
+    ),
+    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     # fig = px.bar(province_df,x="Date",y="New Confirmed")
@@ -528,12 +699,20 @@ def update_figure(hoverData):
 def update_figure(hoverData):
     province = hoverData['points'][0]['customdata']
     province_df = df.loc[df['Location'] == province]
+    province_df = province_df.loc[province_df['Death'] != 0]
     fig = go.Figure(go.Scatter(x=province_df['Date'], y=province_df['Death'],
                     mode='lines+markers',
-                    name=province))
+                    name=province,marker_color='crimson'))
     fig.update_layout(
-    title= province + " : New Deaths",)
-    # fig = px.scatter(province_df,x="Date",y="Confirmed",mode = "line+markers")
+    title= province + " : Cumulative Deaths",
+    title_x= 0.5,
+    titlefont= dict(
+        color=colors['heading'],
+        size=18
+    ),
+    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
+    paper_bgcolor=colors['graph_bg_color'],
+    plot_bgcolor=colors['graph_bg_color'],)
     return fig
 
 @app.callback(Output('canada2-bar','figure'),
@@ -541,14 +720,19 @@ def update_figure(hoverData):
 def update_figure(hoverData):
     province = hoverData['points'][0]['customdata']
     province_df = df.loc[df['Location'] == province]
+    province_df = province_df.loc[province_df['New Death'] != 0]
     fig = go.Figure(go.Bar(x=province_df['Date'], y=province_df['New Death'],
-                            name=province))
+                            name=province, marker_color='crimson'))
     fig.update_layout(
-    title= province + " : New Deaths",)
-
-    # paper_bgcolor=colors['graph_bg_color'],
-    # plot_bgcolor=colors['graph_bg_color'],)
-    # fig = px.bar(province_df,x="Date",y="New Death")
+    title= province + " : New Deaths",
+    title_x= 0.5,
+    titlefont= dict(
+        color=colors['heading'],
+        size=18
+    ),
+    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
+    paper_bgcolor=colors['graph_bg_color'],
+    plot_bgcolor=colors['graph_bg_color'],)
     return fig
 
 @app.callback(Output('no-of-days','figure'),
@@ -584,8 +768,8 @@ def update_figure(y_axis,top):
     # print(current_df.head())
     limit = len(current_df.index)-top_num
     fig = make_subplots(rows=1, cols=2, specs=[[{}, {}]], shared_xaxes=True,
-                    shared_yaxes=False, vertical_spacing=0.001,
-                    subplot_titles=('No. of days since first '+y_axis+' case','Total '+y_axis+' cases'))
+                    shared_yaxes=False, vertical_spacing=0.001,)
+                    # subplot_titles=('No. of days since first '+y_axis+' case','Total '+y_axis+' cases'))
     fig.append_trace(go.Bar(x=count_df['NoOfDays'].iloc[limit:],
                     y=count_df['Country/Region'].iloc[limit:],
                     marker=dict(
@@ -602,7 +786,7 @@ def update_figure(y_axis,top):
         x=current_df[y_axis].iloc[limit:], y=current_df['Country/Region'].iloc[limit:],
         mode='lines+markers',
         # line_color='rgb(128, 0, 128)',
-        name='Current '+y_axis+' Cases',
+        name='Total '+y_axis+' Cases',
     ), 1, 2)
 
     fig.update_layout(
@@ -619,7 +803,7 @@ def update_figure(y_axis,top):
         zeroline=False, showline=False, showticklabels=True, showgrid=True, domain=[0.47, 1], side='top', dtick=25000,
     ),
     # legend=dict(x=0.029, y=1.038, font_size=10),
-    margin=dict(l=100, r=20, t=70, b=70),
+    # margin=dict(l=100, r=20, t=70, b=70),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
 
@@ -636,13 +820,145 @@ def update_figure(y_axis,top):
                                 text=str(yd) ,
                                 font=dict(family='Arial', size=12, color=colors['graph_text']),
                                 showarrow=False))
+        annotations.append(dict(xref='paper', yref='paper', x=0.1, y=0.94,
+                                text='No. of days since first '+y_axis+' Case',
+                                font=dict(size=22, color=colors['text1']),
+                                showarrow=False))
+        # labeling the bar net worth
+        annotations.append(dict(xref='paper', yref='paper', x = 0.85, y = 0.94,
+                                text='Total '+y_axis+' Cases' ,
+                                font=dict(size=22, color=colors['text1']),
+                                showarrow=False))
+    # annotations.append({'text': "Number of Confirmed Cases", 'xref': 'paper', 'yref': 'paper',
+    #                         'x': .5, 'y': max_pos, 'xanchor': 'center', 'yanchor': 'bottom', 'showarrow': False, 'font': dict(size = 22)}
+
+    fig.update_layout(annotations=annotations,
+    title_x= 0.5,
+    titlefont= dict(
+        color=colors['heading'],
+        size=22
+    ),
+    margin=dict(l=20, r=20, t=20, b=20, autoexpand = True))
 
 
-    fig.update_layout(annotations=annotations)
 
 
     return fig
 
+@app.callback(Output('treemap','figure'),
+        [Input('tab-3-Dropdown3','value'),
+        Input('tab-3-Dropdown4','value')])
+def update_figure(option,y_axis):
+
+    if option == 'Global':
+        selected_df = country_df
+        selected_df["world"] = "World" # in order to have a single root node
+        fig = px.treemap(selected_df, path=['world', 'Country/Region'], values=y_axis,
+                          color=y_axis,
+                          # hover_data=['iso_alpha'],
+                          color_continuous_scale='RdBu',
+                          color_continuous_midpoint=np.average(selected_df[y_axis], weights=selected_df[y_axis]))
+    else:
+        selected_df = latest_df.loc[latest_df['Country/Region']==option]
+        print(selected_df)
+        # selected_df["world"] = "world" # in order to have a single root node
+        fig = px.treemap(selected_df, path=['Country/Region', 'Location'], values=y_axis,
+                          color=y_axis,
+                          # hover_data=['iso_alpha'],
+                          color_continuous_scale='RdBu',
+                          color_continuous_midpoint=np.average(selected_df[y_axis], weights=selected_df[y_axis]))
+    return fig
+
+@app.callback(Output('heatmap','figure'),
+        [Input('tab-3-Dropdown5','value'),
+        Input('tab-3-Dropdown6','value')])
+def update_figure(option,y_axis):
+
+    aggregations = { 'Confirmed':'sum','Active':'sum','Death':'sum','Recovered':'sum','Fatality Rate':'mean',
+            'New Confirmed':'sum','New Death':'sum','New Recovered':'sum'}
+
+    if option == 'Global':
+        selected_df=df.groupby(["Date"],as_index=False).agg(aggregations) #groupby Country and Date values
+    else:
+        selected_df = countryDays_df.loc[countryDays_df['Country/Region']==option]
+
+    selected_df[y_axis] = pd.to_numeric(selected_df[y_axis], errors='coerce',downcast='integer')
+    # year = datetime.datetime.now().year
+
+    d1 = selected_df['Date'].min()
+    d2 = selected_df['Date'].max()
+
+    delta = d2 - d1
+
+    dates_in_year = [d1 + datetime.timedelta(i) for i in range(delta.days+1)] #gives me a list with datetimes for each day a year
+    # dates_in_year = sorted(dates_in_year)
+    print(dates_in_year)
+    weekdays_in_year = [i.weekday() for i in dates_in_year] #gives [0,1,2,3,4,5,6,0,1,2,3,4,5,6,...] (ticktext in xaxis dict translates this to weekdays
+    weeknumber_of_dates = [int(i.strftime("%V")) for i in dates_in_year] #gives [1,1,1,1,1,1,1,2,2,2,2,2,2,2,...] name is self-explanatory
+    months = [(i.strftime("%b")) for i in dates_in_year] #gives [1,1,1,1,1,1,1,2,2,2,2,2,2,2,...] name is self-explanatory
+
+    z = list(selected_df[y_axis])
+
+    if (y_axis == 'New Recovered'):
+        colorscale = "Viridis"
+    else:
+        colorscale = "jet"
+
+    text = [str(i) for i in dates_in_year] #gives something like list of strings like '2018-01-25' for each date. Used in data trace to make good hovertext.
+    # print(len(dates_in_year),len(weekdays_in_year),len(z))
+    # print(z,text)
+    # fig = ff.create_annotated_heatmap(x = weekdays_in_year,y = weeknumber_of_dates,
+    #     		z = list(selected_df[y_axis]), annotation_text=text, colorscale = "greys")
+    #
+    # for i in range(len(fig.layout.annotations)):
+    #     fig.layout.annotations[i].font.size = 8
+
+    #
+    print(len(set(months)))
+    data = [go.Heatmap(
+    		x = weekdays_in_year,
+    		y = weeknumber_of_dates,
+    		z = z,
+    		text=text,
+    		hoverinfo="text",
+    		xgap=3, # this
+    		ygap=3, # and this is used to make the grid-like apperance
+    		# showscale=False,
+            colorscale = colorscale
+    	)]
+    layout = go.Layout(
+    	title='Calendar Heatmap for '+y_axis+" Cases",
+    	# height=400,
+    	xaxis=dict(
+    		tickmode="array",
+    		ticktext=["Mon", "Tues", "Wed", "Thur", "Fri", "Sat", "Sun"],
+    		tickvals=[0,1,2,3,4,5,6],
+    		title="Week Days",
+            showline = False,
+            showgrid = False,
+            zeroline = False
+    	),
+    	yaxis=dict(
+            ticktext=months,
+    		tickvals=weeknumber_of_dates,
+    		showline = False,
+            showgrid = False,
+            zeroline = False,
+    		title="Month"
+    	),
+    	plot_bgcolor=colors['graph_bg_color'], #making grid appear black
+        font = dict(color = colors['text'], size =12),
+        margin = dict(l=500,r=500,t=40,b=30),
+        # yaxis_nticks=len(set(months)),
+        title_x= 0.5,
+        titlefont= dict(
+            color=colors['heading'],
+            size=22
+        ),
+    )
+
+    fig = go.Figure(data=data, layout=layout)
+    return fig
 
 
 # @app.callback(Output('sankey','figure'),
@@ -659,7 +975,9 @@ def update_figure(y_axis,top):
 
 
 @app.callback(Output('forecast','figure'),
-        [Input('tab-4-Dropdown1','value'),Input('tab-4-Dropdown2','value')])
+        [Input('tab-4-Dropdown1','value'),
+        Input('tab-4-Dropdown2','value'),])
+        # Input('tab-4-scale','value')])
 def update_figure(y_axis,countries):
 
     grouped_df = df.loc[df[y_axis] != 0].copy()
@@ -677,7 +995,7 @@ def update_figure(y_axis,countries):
         selected_countries = ['Canada','France','Germany','Italy','Japan','United Kingdom','US']
     elif countries == "BRICS":
         selected_countries = ['Brazil','Russia','India','China','South Africa']
-    print(selected_countries)
+    # print(selected_countries)
 
     # countryAllDays_df.sort_index(inplace=True)
     # selector_df.sort_index(inplace=True)
@@ -709,7 +1027,7 @@ def update_figure(y_axis,countries):
         copy =  pd.DataFrame(row,columns = ['Country/Region','Date','Estimated '+y_axis] )
         # print(copy)
         estimator = estimator.append(copy,ignore_index=True)
-    print(estimator)
+    # print(estimator)
 
     row = []
     for country in ordered_countries:
@@ -775,14 +1093,187 @@ def update_figure(y_axis,countries):
 
     fig.update_layout(
     title= countries +" Countries : "+y_axis+" Cases",
-
+    # yaxis={'type': 'linear' if scale == 'Linear' else 'log',
+    #     'autorange': True},
     paper_bgcolor=colors['graph_bg_color'],
-    plot_bgcolor=colors['graph_bg_color'],)
-
-
-
+    plot_bgcolor=colors['graph_bg_color'],
+    title_x= 0.5,
+    # yaxis_type="log",
+    titlefont= dict(
+        color=colors['heading'],
+        size=22
+    ),
+    # title_y = 0.05,
+    margin=dict(l=60, r=20, t=80, b=20, autoexpand = True))
     return fig
 
+@app.callback(Output('moving-average','figure'),
+        [Input('tab-4-scale','value'),
+        Input('tab-4-Dropdown4','value')])
+        # Input('tab-4-scale','value')])
+def update_figure(scale, y_axis):
+    total_cases = y_axis
+    new_cases = "New "+y_axis
+    selected_df =  countryDays_df[['Country/Region','Date',total_cases, new_cases]]
+    selector_df = latest_df.sort_values(total_cases,ascending=False)
+    # if countries == "Top 10":
+    #     limit = 10
+    #     selected_countries = list(selector_df[:limit]['Country/Region'])
+    # elif countries == "G7":
+    #     selected_countries = ['Canada','France','Germany','Italy','Japan','United Kingdom','US']
+    # elif countries == "BRICS":
+    #     selected_countries = ['Brazil','Russia','India','China','South Africa']
+    selected_countries = list(selector_df[:10]['Country/Region'])
+    print(selected_countries)
+    # selected_countries = ['US']
 
+    # countryAllDays_df.sort_index(inplace=True)
+    # selector_df.sort_index(inplace=True)
+    movingAvg_df = selected_df[selected_df["Country/Region"].isin(selected_countries)]
+
+    # ordered_countries = list(movingAvg_df['Country/Region'].unique()
+    movingAvg_df = movingAvg_df.sort_values(['Country/Region','Date'], ascending = True)
+    ordered_countries = list(movingAvg_df['Country/Region'].unique())
+
+    estimator = pd.DataFrame(columns = ['Country/Region','Date',total_cases, new_cases])
+    prediction = []
+    # if mAvg_option == moving_average_options[0]['value']:
+    for country in ordered_countries:
+        timeseries_df = movingAvg_df[movingAvg_df['Country/Region']==country]
+        # print("moving",timeseries_df.iloc[:,-1].rolling(window=7).mean())
+        prediction.extend(list(timeseries_df.iloc[:,-1].rolling(window=7).mean()))
+    # elif mAvg_option == moving_average_options[1]['value']:
+    #     for country in ordered_countries:
+    #         timeseries_df = movingAvg_df[movingAvg_df['Country/Region']==country]
+    #         prediction.extend(list(timeseries_df.iloc[:,-1].expanding(min_periods=7).mean()))
+    # elif mAvg_option == moving_average_options[2]['value']:
+    #     for country in ordered_countries:
+    #         timeseries_df = movingAvg_df[movingAvg_df['Country/Region']==country]
+    #         prediction.extend(list(timeseries_df.iloc[:,-1].ewm(span=40,adjust=False).mean()))
+    # print(movingAvg_df.count())
+    # print((prediction[0:15]))
+    movingAvg_df['Moving Average'] = np.array(prediction)
+    movingAvg_df.fillna(0, inplace=True)
+    # fig = go.Figure()
+    # print(movingAvg_df.tail())
+    # print(ordered_countries)
+    # ordered_countries = ordered_countries.sort(reverse = True)
+    # print(ordered_countries)
+    fig = make_subplots(rows=2, cols=5, specs=[[{},]*5,[{},]*5], shared_xaxes=False,
+                    shared_yaxes=False, vertical_spacing=0.1,)
+
+    i=1
+    c=1
+    for country in selected_countries[0:5]:
+        each_df = movingAvg_df[movingAvg_df['Country/Region']==country]
+        if i==1:
+            fig.append_trace(go.Scatter(
+                                        x=each_df[total_cases],
+                                        y=each_df[new_cases],
+                                        mode="lines+markers",
+                                        name = country,
+                                        xaxis = 'x',
+                                        yaxis = 'y',
+                                    ), row=1, col=i)
+        else:
+            fig.append_trace(go.Scatter(
+                                    x=each_df[total_cases],
+                                    y=each_df[new_cases],
+                                    mode="lines+markers",
+                                    name = country,
+                                    xaxis = 'x'+str(c),
+                                    yaxis='y'+str(c)
+
+                                ), row=1, col=i)
+        i += 1
+        c += 1
+    i=1
+    c=5
+    for country in selected_countries[5:]:
+        each_df = movingAvg_df[movingAvg_df['Country/Region']==country]
+        fig.append_trace(go.Scatter(
+                                    x=each_df[total_cases],
+                                    y=each_df[new_cases],
+                                    mode="lines+markers",
+                                    name = country,
+                                    xaxis = 'x'+str(c),
+                                    yaxis='y'+str(c)
+                                ), row=2, col=i)
+        i += 1
+        c += 1
+        # fig = px.line(movingAvg_df, x=total_cases, y=new_cases, color="Country/Region",
+        #        hover_name="Country/Region", log_x = True, log_y = True)
+    # annotations = []
+    #
+    # for i in range(1,len(selected_countries[0:5])+1):
+    #     if i ==1:
+    #         annotations.append({'xref': 'x','x': 0.5,
+    #         'text': selected_countries[i-1]})
+    #     else:
+    #         annotations.append({'xref': 'x'+str(i),'x': 0.5,
+    #         'text': selected_countries[i-1]})
+    # for i in range(6,len(selected_countries[5:])+1):
+    #     annotations.append({'xref': 'x'+str(i),'x': -0.5,
+    #     'text': selected_countries[i-1]})
+    # fig.update_layout(annotations=annotations)
+    xaxes = [0.02,0.22,0.45,0.66,0.89]
+    yaxes = [0.98,0.38]
+    # diff_df = diff_df.sort_values(y_axis,ascending = False)
+    c = 0
+    for i in range(len(xaxes)):
+        fig.add_annotation( x=xaxes[i], y=yaxes[0], showarrow=False,
+            text= selected_countries[c], xref="paper", yref="paper",
+            font=dict(color=colors['graph_text'], size=18))
+        c+=1
+    # c = 5
+    for i in range(len(xaxes)):
+        fig.add_annotation( x=xaxes[i], y=yaxes[1], showarrow=False,
+            text= selected_countries[c], xref="paper", yref="paper",
+            font=dict(color=colors['graph_text'], size=18))
+        c+=1
+    fig.update_layout(
+    title= "Top 10 Countries : "+new_cases+" Cases Vs "+total_cases,
+    xaxis= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis2= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis3= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis4= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis5= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis6= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis7= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis8= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis9= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    xaxis10= {'title': total_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis2= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis3= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis4= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis5= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis6= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis7= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis8= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis9= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+    yaxis10= {'title': new_cases, 'type' : 'linear' if scale == 'Linear' else 'log'},
+
+    # yaxis2=dict(
+    #     title = new_cases,
+    #     overlaying='y',
+    #     side='right'
+    # )
+    # yaxis={'type': 'linear' if scale == 'Linear' else 'log',
+    #     'autorange': True},
+    paper_bgcolor=colors['graph_bg_color'],
+    plot_bgcolor=colors['graph_bg_color'],
+    title_x= 0.5,
+    # yaxis_type="log",
+    titlefont= dict(
+        color=colors['heading'],
+        size=22
+    ),
+    # title_y = 0.05,
+    margin=dict(l=60, r=20, t=80, b=20, autoexpand = True))
+    # for country in ordered_countries:
+    #     selector_df = movingAvg_df[movingAvg_df['Country/Region']==country]
+    #     fig.add_trace()
+    return fig
 if __name__ == '__main__':
     app.run_server(debug=True)
