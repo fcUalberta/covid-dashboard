@@ -22,11 +22,15 @@ from dateutil.relativedelta import relativedelta
 from data_ingest import data_ingest
 from forecasting import forecast
 
+from clustering_dataload import initial_data,scatter_data,sunburst_single,sunburst_multi
+
 # df-> Countries and provinces with All days
 # countryDays_df -> Country Df with all days
 # latest_df -> Countries and provinces with latest date
 # country_df -> Countries with latest date
+
 df,countryDays_df,latest_df, country_df,canada_df = data_ingest()
+df_covid = initial_data() #Loading Covid Research Database DF
 #added for tab-1
 
 # alldf = pd.read_csv("countryDays_df.csv",sep='\t')
@@ -36,12 +40,13 @@ sumdf = pd.read_csv("sumdf.csv",sep='\t')
 
 countries = country_df["Country/Region"]
 
-newdf = sumdf.loc[sumdf['Date'] == '2020-04-08']
+# newdf = sumdf.loc[sumdf['Date'] == list(latest_df['Date'])[0]]
 
-confirmedVal = newdf["Confirmed"].astype(int).apply(str)
-ActiveVal = newdf["Active"].astype(int).apply(str)
-DeathVal = newdf["Death"].astype(int).apply(str)
-RecoveredVal = newdf["Recovered"].astype(int).apply(str)
+# Global Values
+confirmedVal = '{:,d}'.format(latest_df['Confirmed'].sum())
+ActiveVal = '{:,d}'.format(latest_df["Active"].sum())
+DeathVal = '{:,d}'.format(latest_df["Death"].sum())
+RecoveredVal = '{:,d}'.format(latest_df["Recovered"].sum())
 
 template = 'plotly'
 epoch = datetime.datetime.utcfromtimestamp(0)
@@ -100,6 +105,14 @@ scale_options = [{'label': i, 'value': i} for i in ['Linear', 'Log']]
 moving_average_options = [{'label': i, 'value': i} for i in ['Simple',
                         'Cumulative', 'Exponential']]
 
+single_level_options = [{'label': i, 'value': i} for i in ['5 Clusters',
+                        '10 Clusters', '15 Clusters']]
+
+multi_level_options = [{'label': i, 'value': i} for i in ['5 Parents-5 Child Clusters',
+                        '5 Parents-10 Child Clusters']]
+
+
+
 country_options = [{'label': 'Global', 'value': 'Global'}]
 option_df = latest_df.loc[latest_df['Province/State']!=0]
 cols = list(option_df['Country/Region'].unique())
@@ -128,7 +141,7 @@ colors = {
     'Confirmed': '#192AB4',
     'Active': '#ff6f00',
     'Death': '#da5657',
-    'Recovered': '#45df7e',
+    'Recovered': '#16B965',
     'graph_title1':'#C01414',
     'titlebox_border':'thin lightgrey solid',
     'titlebox_background':'rgb(250, 250, 250)',
@@ -187,6 +200,18 @@ graph_style = {
 'padding': '2px',
 # 'display': 'inline-block',
 'box-shadow': '3px 3px 3px 3px lightgrey',
+'padding-top':'2px',
+'float':'center',
+'backgroundColor':colors['graph_bg_color'],
+'plot_bgcolor': colors['graph_bg_color']
+
+}
+graph_style1 = {
+# 'borderTop': '1px solid #d6d6d6',
+# 'borderBottom': '1px solid #d6d6d6',
+'padding': '2px',
+# 'display': 'inline-block',
+# 'box-shadow': '3px 3px 3px 3px lightgrey',
 'padding-top':'2px',
 'float':'center',
 'backgroundColor':colors['graph_bg_color'],
@@ -381,37 +406,63 @@ app.layout = html.Div(children=[
                                                 className="seven columns",
                                                 children = [
                                                     #Drop-Down-1-Div
-                                                    html.Div([
-                                                                html.P('Select from the drop down'
-                                                                ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
-                                                                dcc.Dropdown(id='option',
-                                                                             options=target_options,
-                                                                             value ='Confirmed',
-                                                                             style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}),
-                                                                html.Div(style = {"padding":3}),# For vertical space
-                                                            ],className = "drop-down"),
+                                                html.Div([
+                                                html.Div([
+                                                    html.P("Select the data"),
+                                                    dcc.Dropdown(
+                                                           id='option',
+                                                           options=target_options,
+                                                           value='Confirmed',
+                                                           style={'width':'60%', 'text-align':'left', 'color':colors["text1"],'float':'center'}
+                                                    ),],style={'margin-left': '380px'}),
+                                                    # ], style={'width': '49%', 'margin-left': '120px','float': 'right'}),
+                                                ], style=title_box,className = "container"),
+
+                                                    # html.Div([
+                                                    #             html.P('Select from the drop down'
+                                                    #             ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
+                                                    #             dcc.Dropdown(id='option',
+                                                    #                          options=target_options,
+                                                    #                          value ='Confirmed',
+                                                    #                          style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}, className = "container"),
+                                                    #             html.Div(style = {"padding":3}),# For vertical space
+                                                            # ],style = title_box, className = "drop-down"),
                                                     #Chlorepath-Div
                                                     html.Div([
                                                                 dcc.Graph(id='chlorepath',
-                                                                          style = {"height":"70vh"}, hoverData={'points': [{'customdata': ''}]}),
-                                                              ], style = graph_style,className = "twelve columns"),
+                                                                          style = {"height":"70vh"}, clickData={'points': [{'customdata': ''}]},
+                                                                        config={'displayModeBar': False}),
+                                                              ], style = graph_style1),
                                                     #Drop-Down-2-Div
+                                                    html.Div(style = {"padding":20}),# For vertical space
                                                     html.Div([
-                                                                html.P('Select from the drop down'
-                                                                        ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
-                                                                dcc.Dropdown(id='optionbubble',
-                                                                             options=target_options,
-                                                                             value ='Confirmed',
-                                                                             style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}),
-                                                                html.Div(style = {"padding":3}),# For vertical space
-                                                            ],className = "drop-down"),
+                                                    html.Div([
+                                                        html.P("Select the data"),
+                                                        dcc.Dropdown(
+                                                               id='optionbubble',
+                                                               options=target_options,
+                                                               value='Confirmed',
+                                                               style={'width':'60%', 'text-align':'left', 'color':colors["text1"],'float':'center'}
+                                                           ),],style={'margin-left': '380px'}),
+                                                    # ], style={'width': '49%', 'margin-left': '120px','float': 'right'}),
+                                                    ], style=title_box,className = "container1"),
+                                                    # html.Div([
+                                                    #             html.P('Select from the drop down'
+                                                    #                     ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
+                                                    #             dcc.Dropdown(id='optionbubble',
+                                                    #                          options=target_options,
+                                                    #                          value ='Confirmed',
+                                                    #                          style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}),
+                                                    #             html.Div(style = {"padding":3}),# For vertical space
+                                                    #         ],className = "drop-down"),
                                                     #Vertical-Space
                                                     html.Div(style = {"padding":10}),# For vertical space
                                                     #Bubble Map
                                                     html.Div([
                                                                dcc.Graph(id='bubblemap',
-                                                                         style = {"height":"70vh"}),
-                                                            ],style = graph_style, className = "twelve columns"),
+                                                                         style = {"height":"70vh"},
+                                                                         config={'displayModeBar': False}),
+                                                            ],style = graph_style1),
                                             ]),#End-of-Map-Panel
 
                                             #Right-Most-Panel
@@ -835,8 +886,124 @@ app.layout = html.Div(children=[
         style=tab_style,
         selected_style=tab_selected_style,
         children = [
+        html.Div([
+            html.Div(style = {"padding":10}),# For vertical space
+            html.Div([
+                html.H2("Visualization of Clustering Results",
+                style=heading2, className = "container"),
+                html.P("Dimension Reduction by T-SNE & Clustering by K-Means",
+                    style = small_italics)
+            ], style= title_box),
+            html.Div(style = {"padding":10}),# For vertical space
+            html.Div([
+                  html.P("Select the number of clusters"),
+                   dcc.Dropdown(
+                          id='tab-5-option1',
+                          options=single_level_options,
+                          value='10 Clusters',
+                          # labelStyle={'display': 'inline-block'},
+                          style={'width':'80%', 'text-align':'left', 'color':colors["text1"]}
+                      ),
+              ], style=title_box, className = "container"),
 
-            ]) # End of Tab 5
+              html.Div([
+                html.Div([
+                    dcc.Graph(id='scatter_cluster',style = {"height":"80vh"}),
+
+                ],style = graph_style,className="six columns"),
+
+              html.Div([
+                html.Div([
+                    dcc.Graph(id='bubble_cluster',style = {"height":"80vh"}),
+
+                ],style = graph_style,className="six columns"),
+
+            ],className="row"),
+            ]),
+            html.Div(style = {"padding":10}),# For vertical space
+
+        html.Div([
+            html.Div(style = {"padding":10}),# For vertical space
+            html.Div([
+                html.H2("Hierarchical Relationship of Articles to Clusters",
+                style=heading2, className = "container"),
+                html.P("Dimension Reduction by T-SNE & Clustering by K-Means",
+                    style = small_italics)
+            ], style= title_box),
+            html.Div(style = {"padding":10}),# For vertical space
+            html.Div([
+                  html.P("Select the level of clustering"),
+                   dcc.Dropdown(
+                          id='tab-5-option2',
+                          options=single_level_options,
+                          value='5 Clusters',
+                          # labelStyle={'display': 'inline-block'},
+                          style={'width':'45%', 'text-align':'left', 'color':colors["text1"]}
+                      ),
+
+                  html.P("Select the level of clustering"),
+                   dcc.Dropdown(
+                          id='tab-5-option3',
+                          options=multi_level_options,
+                          value='5 Parents-5 Child Clusters',
+                          # labelStyle={'display': 'inline-block'},
+                          style={'width':'45%', 'text-align':'left', 'color':colors["text1"]}
+                      ),
+              ], style=title_box, className = "container"),
+
+              html.Div([
+                html.Div([
+                    dcc.Graph(id='sunburst1',style = {"height":"80vh"}),
+
+                ],style = graph_style,className="six columns"),
+
+              html.Div([
+                html.Div([
+                    dcc.Graph(id='sunburst2',style = {"height":"80vh"}),
+
+                ],style = graph_style,className="six columns"),
+
+            ],className="row"),
+
+
+            ]),
+            html.Div(style = {"padding":10}),# For vertical space
+        ]),
+
+        html.Div([
+            html.Div(style = {"padding":10}),# For vertical space
+            html.Div([
+                html.H2("Hierarchical Relationship of Articles to Clusters",
+                style=heading2, className = "container"),
+                html.P("Dimension Reduction by T-SNE & Clustering by K-Means",
+                    style = small_italics)
+            ], style= title_box),
+            html.Div(style = {"padding":10}),# For vertical space
+            html.Div([
+                  html.P("Select the level of clustering"),
+                   dcc.Dropdown(
+                          id='tab-5-option4',
+                          options=multi_level_options,
+                          value='5 Parents-5 Child Clusters',
+                          # labelStyle={'display': 'inline-block'},
+                          style={'width':'80%', 'text-align':'left', 'color':colors["text1"]}
+                      ),
+              ], style=title_box, className = "container"),
+
+              html.Div([
+                html.Div([
+                    dcc.Graph(id='dendrogram1',style = {"height":"80vh"},className="twelve columns"),
+
+                ],style = graph_style),
+
+                ],className="row"),
+
+            html.Div(style = {"padding":10}),# For vertical space
+        ]),
+        ]),
+
+
+        ]) # End of Tab 5
     ])
 
 
@@ -903,13 +1070,27 @@ def update_div(case):
     Output('chlorepath','figure'),
     [Input('option', 'value')])
 def update_table(column):
-        # fig = px.choropleth_mapbox()
+
+
         fig = go.Figure(go.Choropleth(locationmode = 'country names', locations=country_df['Country/Region'], z=country_df[column],
                                             colorscale= "portland",
                                             zmin=country_df[column].min(), zmax=country_df[column].max(),
                                             marker_opacity=1, marker_line_width=0.5, customdata = country_df['Country/Region']))
         fig["layout"].update(paper_bgcolor=colors["graph_bg_color"], plot_bgcolor=colors["graph_bg_color"])
-        fig.update_layout(
+
+
+        annotations = []
+        continents = ['North America', 'South America', 'Africa','Europe',  'Asia', 'Australia']
+        Lat = [0.165,0.295,0.557,0.63,0.76,0.90]
+        Long = [0.725,0.47,0.560,0.727,0.64,0.40]
+
+        for lat,long,continent in zip(Lat,Long,continents):
+                annotations.append(dict(xref='paper', yref='paper', x=lat, y=long,
+                                            text= continent,
+                                            font=dict(size=12, color='white'),
+                                            showarrow=False))
+
+        fig.update_layout(annotations = annotations,
                             geo=dict(
                                 showframe=False,
                                 showcoastlines=False,
@@ -926,21 +1107,33 @@ def update_table(column):
     [Input('optionbubble', 'value')])
 def update_table(column):
         alldf = countryDays_df
-        print(alldf.dtypes)
-        # alldf['Date'] = alldf['Date'].dt.strftime('%x')
+        # print(alldf.dtypes)
+        alldf['Date'] = pd.to_datetime(alldf['Date'])
+        alldf['Date'] = alldf['Date'].dt.strftime('%x')
         fig = px.scatter_geo(alldf,
                     lat = "Lat",
                     lon = "Long",
-                    # animation_frame="Date",
+                    animation_frame="Date",
                     size_max = 100,
                     hover_data = ['Country/Region', column],
                     size=alldf[column],
-                    color = 'Country/Region',
+                    # color = 'Country/Region',
                     # color_continuous_scale= 'portland'
                     # colorscale = "portland"
 
                     )
-        fig.update_layout(
+        annotations = []
+        continents = ['North America', 'South America', 'Africa','Europe',  'Asia', 'Australia']
+        Lat = [0.17,0.295,0.557,0.63,0.76,0.89 ]
+        Long = [0.76,0.45,0.560,0.82,0.69,0.38]
+
+        for lat,long,continent in zip(Lat,Long,continents):
+                annotations.append(dict(xref='paper', yref='paper', x=lat, y=long,
+                                            text= continent,
+                                            font=dict(size=12, color=colors['text1']),
+                                            showarrow=False))
+
+        fig.update_layout(annotations = annotations,
                             geo=dict(
                                 showframe=False,
                                 showcoastlines=False,
@@ -954,7 +1147,7 @@ def update_table(column):
         return fig
 
 @app.callback(Output('type','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada":
@@ -969,7 +1162,7 @@ def update_div(hoverData):
     return return_divs
 
 @app.callback(Output('div-1','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada" or country == "Syria":
@@ -992,7 +1185,7 @@ def update_div(hoverData):
     return return_divs
 
 @app.callback(Output('count_total_comfirmed','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada" or country == "Syria":
@@ -1008,7 +1201,7 @@ def update_div(hoverData):
     return return_divs
 
 @app.callback(Output('count_total_death','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada" or country == "Syria":
@@ -1024,7 +1217,7 @@ def update_div(hoverData):
     return return_divs
 
 @app.callback(Output('count_total_recovered','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada" or country == "Syria":
@@ -1041,7 +1234,7 @@ def update_div(hoverData):
 
 
 @app.callback(Output('div-2','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada" or country == "Syria":
@@ -1065,7 +1258,7 @@ def update_div(hoverData):
 
 
 @app.callback(Output('div-3','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada" or country == "Syria":
@@ -1088,7 +1281,7 @@ def update_div(hoverData):
     return return_divs
 
 @app.callback(Output('div-4','children'),
-            [Input('chlorepath','hoverData')])
+            [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
     if country == "Canada" or country == "Syria" :
@@ -1112,7 +1305,7 @@ def update_div(hoverData):
 
 @app.callback(Output('onebar','figure'),
             [Input('option', 'value'),
-             Input('chlorepath','hoverData')])
+             Input('chlorepath','clickData')])
 def update_figure(value, hoverData):
     country = hoverData['points'][0]['customdata']
     str = "New"+" "+value
@@ -1124,6 +1317,7 @@ def update_figure(value, hoverData):
         country = "World"
     else:
         newcases_df = countryDays_df.loc[countryDays_df['Country/Region'] == country]
+        newcases_df = newcases_df.loc[newcases_df[str]!=0]
         fig = go.Figure(go.Bar(x=newcases_df['Date'], y=newcases_df[str],
                                 name=value))
     fig.update_layout(
@@ -1249,7 +1443,7 @@ def canada_map(column,n):
           },
           'clickmode': 'event+select',
           'dragmode': False,
-          'margin': dict(l=60, r=10, t=20, b=5, autoexpand = True),
+          'margin': dict(l=30, r=10, b= 10),
           "title": "Canada: "+column,
           'title_x':0.5,
           'title_y':0.96    ,
@@ -1292,7 +1486,7 @@ def update_figure(hoverData):
         color=colors['heading'],
         size=18
     ),
-    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
+    margin=dict(l=20, r=20),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     # fig = px.scatter(province_df,x="Date",y="Confirmed",mode = "line+markers")
@@ -1313,7 +1507,7 @@ def update_figure(hoverData):
         color=colors['heading'],
         size=18
     ),
-    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
+    margin=dict(l=20, r=20),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     # fig = px.bar(province_df,x="Date",y="New Confirmed")
@@ -1335,7 +1529,7 @@ def update_figure(hoverData):
         color=colors['heading'],
         size=18
     ),
-    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
+    margin=dict(l=20, r=20),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     return fig
@@ -1355,7 +1549,7 @@ def update_figure(hoverData):
         color=colors['heading'],
         size=18
     ),
-    margin=dict(l=20, r=20, t=40, b=20, autoexpand = True),
+    margin=dict(l=20, r=20),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     return fig
@@ -1705,7 +1899,7 @@ def update_figure(y_axis,countries):
     selected_df = countryAllDays_df[countryAllDays_df["Country/Region"].isin(selected_countries)]
     ordered_countries = list(selected_df['Country/Region'].unique())
 
-    # print(selected_df)
+    print(selected_df.dtypes)
 
     latest_date = df['Date'].max()
     next_week = []
@@ -1713,7 +1907,13 @@ def update_figure(y_axis,countries):
         next_day = latest_date+datetime.timedelta(days=x)
         next_week.append(next_day.date())
 
-    print(selected_df[y_axis])
+    # selected_df = selected_df.sort_values('Date',ascending=True)
+    # print(next_week)
+    selected_df['Date'] = pd.to_datetime(selected_df['Date'])
+    selected_df = selected_df.sort_values([y_axis,'Date'],ascending=[False,True])
+    # selected_df = selected_df.sort_values(['Date'],ascending=True)
+
+    print(selected_df)
     fig = px.line(selected_df, x="Date", y=y_axis, color="Country/Region",
                hover_name="Country/Region")
     # fig.add_trace(go.Scatter(x=countryAllDays_df['Date'], y=countryAllDays_df[y_axis],
@@ -1956,5 +2156,270 @@ def update_figure(scale, y_axis):
     #     selector_df = movingAvg_df[movingAvg_df['Country/Region']==country]
     #     fig.add_trace()
     return fig
+
+@app.callback(Output('scatter_cluster','figure'),
+        [Input('tab-5-option1','value')])
+        # Input('tab-4-scale','value')])
+def update_figure(cluster_num):
+
+    if cluster_num == "5 Clusters":
+        k = 5
+    elif cluster_num == "10 Clusters":
+        k = 10
+    else:
+        k = 15
+    X_embedded_child5 = scatter_data(k)
+    X=[[] for _ in range(k)]
+    Y=[[] for _ in range(k)]
+    AVX,AVY,size,a= [],[],[],[]
+    fig = go.Figure()
+    for i in range (0,k):
+        data=X_embedded_child5[i]
+
+        for ii in data:
+            X[i].append(ii[0])
+            Y[i].append(ii[1])
+
+        fig.add_trace(go.Scatter(x=X[i], y=Y[i], mode='markers',
+                marker=dict(size=12,line=dict(width=2,color='DarkSlateGrey')),
+                name = "Cluster "+str(i+1),
+                text = "Cluster "+str(i+1),
+                hoverinfo = "text",
+                ))
+    fig.update_layout(
+        title = "Scatter Plot for "+cluster_num,
+        title_x= 0.5,
+        titlefont= dict(
+            color=colors['heading'],
+            size=18
+        ),
+        margin=dict(l=10, r=10),
+        paper_bgcolor=colors['graph_bg_color'],
+        plot_bgcolor=colors['graph_bg_color'],)
+
+    return fig
+
+@app.callback(Output('bubble_cluster','figure'),
+        [Input('tab-5-option1','value')])
+        # Input('tab-4-scale','value')])
+def update_figure(cluster_num):
+
+    if cluster_num == "5 Clusters":
+        k = 5
+    elif cluster_num == "10 Clusters":
+        k = 10
+    else:
+        k = 15
+    X_embedded_child5 = scatter_data(k)
+
+    X=[[] for _ in range(k)]
+    Y=[[] for _ in range(k)]
+    AVX,AVY,size,a= [],[],[],[]
+    fig = go.Figure()
+    for i in range (0,k):
+        data=X_embedded_child5[i]
+        size.append(len(X_embedded_child5[i])/50)
+        for ii in data:
+            X[i].append(ii[0])
+            Y[i].append(ii[1])
+        mean1=np.mean(X[i])
+        mean2=np.mean(Y[i])
+        AVX.append(mean1)
+        AVY.append(mean2)
+
+    for i in range (0,len(size)):
+        a.append(i)
+
+    clusters = ["Cluster " + str(a+1) for a in range(0,k)]
+    fig = go.Figure(data=go.Scatter(x=AVX,y=AVY,mode='markers',
+                    text = clusters,
+                    hoverinfo = "text",
+                    marker=dict(size=size,
+                            # sizemode='area',
+                            # sizeref=2.*max(size)/(40.**2),
+                            sizemin=4,
+                            color=a)))
+
+
+    fig.update_layout(
+        title = "Bubble Plot for "+cluster_num,
+        title_x= 0.5,
+        titlefont= dict(
+            color=colors['heading'],
+            size=18
+        ),
+        margin=dict(l=10, r=10),
+        paper_bgcolor=colors['graph_bg_color'],
+        plot_bgcolor=colors['graph_bg_color'],)
+
+
+    return fig
+
+@app.callback(Output('sunburst1','figure'),
+        [Input('tab-5-option2','value')])
+        # Input('tab-4-scale','value')])
+def update_figure(cluster_num):
+
+    if cluster_num == "5 Clusters":
+        k = 5
+    elif cluster_num == "10 Clusters":
+        k = 10
+    else:
+        k = 15
+    colorscale = "rdbu"
+
+    y_pred5 = sunburst_single(k)
+
+    article=list(df_covid["title"])[1:100]
+    cluster = [x + 1 for x in list(y_pred5[1:100])]
+    value = [x + 1 for x in list(y_pred5[1:100])]
+
+    data = np.dstack([article, cluster,value]).reshape(99,3)
+    df = pd.DataFrame(data,columns = ['article','cluster','value'])
+    fig =px.sunburst(df, path=['cluster','article'] ,values='value',
+                        color_continuous_scale=colorscale,)
+  # color_continuous_midpoint=np.average(selected_df[y_axis], weights=selected_df[y_axis]))
+
+    fig.update_layout(
+        title = "Single Level Clustering for "+cluster_num,
+        title_x= 0.5,
+        titlefont= dict(
+            color=colors['heading'],
+            size=18
+        ),
+        margin=dict(l=10, r=10),
+        paper_bgcolor=colors['graph_bg_color'],
+        plot_bgcolor=colors['graph_bg_color'],)
+
+    return fig
+
+
+def takeSecond(elem):
+       return elem[1]
+
+@app.callback(Output('sunburst2','figure'),
+        [Input('tab-5-option3','value')])
+        # Input('tab-4-scale','value')])
+def update_figure(cluster_num):
+
+    if cluster_num == "5 Parents-5 Child Clusters":
+        k = 5
+    else:
+        k = 10
+    colorscale = "rdbu"
+    y_pred5 = sunburst_single(5)
+    second = sunburst_multi(k)
+
+    d=[]
+    data=df_covid['title']
+    x=np.array(data)
+
+    for i in range (0,700) :
+       xx=x[i]
+       y=y_pred5[i]
+       d.append((xx,y))
+       d.sort(key=takeSecond)
+
+    x,y=[],[]
+    for i in d:
+       x.append((i[0][:]))
+       y.append((i[:][1]))
+    secondd=[]
+    print(second)
+    for i in second:
+        for ii in i:
+            secondd.append(ii)
+    np.transpose(secondd)
+
+    fig = go.Figure()
+
+    # print(np.array(article.shape),np.array(cluster).shape, np.array(cluster2).shape)
+    article = x
+    cluster = [a + 1 for a in y]
+    cluster2 = [a + 1 for a in secondd[0:700]]
+    value = cluster2
+    print(np.array(article).shape,np.array(cluster).shape, np.array(secondd).shape)
+
+    data = np.dstack([article, cluster, cluster2,value]).reshape(700,4)
+    df = pd.DataFrame(data,columns = ['article','cluster','cluster2','value'])
+
+    fig =px.sunburst(
+       df, path=['cluster','cluster2','article'] ,values='value',
+                               color_continuous_scale=colorscale,)
+
+    fig.update_layout(
+        title = "Multi-Level Clustering for "+cluster_num,
+        title_x= 0.5,
+        titlefont= dict(
+            color=colors['heading'],
+            size=18
+        ),
+        margin=dict(l=10, r=10),
+        paper_bgcolor=colors['graph_bg_color'],
+        plot_bgcolor=colors['graph_bg_color'],)
+    return fig
+
+
+
+
+
+@app.callback(Output('dendrogram1','figure'),
+        [Input('tab-5-option4','value')])
+        # Input('tab-4-scale','value')])
+def update_figure(cluster_num):
+
+    if cluster_num == "5 Parents-5 Child Clusters":
+        k = 5
+    else:
+        k = 10
+
+    y_pred5 = sunburst_single(5)
+    second = sunburst_multi(k)
+
+    d=[]
+    data=df_covid['title']
+    x=np.array(data)
+
+    for i in range (0,700) :
+       xx=x[i]
+       y=y_pred5[i]
+       d.append((xx,y))
+       d.sort(key=takeSecond)
+
+    x,y=[],[]
+    for i in d:
+       x.append((i[0][:]))
+       y.append((i[:][1]))
+    secondd=[]
+    print(second)
+    for i in second:
+        for ii in i:
+            secondd.append(ii)
+    np.transpose(secondd)
+
+    b=(y,secondd[0:700])
+    d=[]
+    for i in range (0,700):
+        xx=b[0][i]
+        y1=b[1][i]
+        d.append((xx,y1))
+
+    fig = go.Figure()
+    Xx = np.array(d)
+    names = x[0:200]#
+    fig = ff.create_dendrogram(Xx[0:200], orientation='left', labels=names)
+    fig.update_layout(
+        title = "Dendrogram  for "+cluster_num,
+        title_x= 0.5,
+        titlefont= dict(
+            color=colors['heading'],
+            size=18
+        ),
+        # margin=dict(l=10, r=10),
+        paper_bgcolor=colors['graph_bg_color'],
+        plot_bgcolor=colors['graph_bg_color'],)
+
+    return fig
+
 if __name__ == '__main__':
     app.run_server(debug=True)

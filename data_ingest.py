@@ -29,7 +29,11 @@ def data_ingest():
     combined_df['Date'] = pd.to_datetime(combined_df['Date']) #Converting to datetype
     for c in ['Lat','Long','Confirmed','Death','Recovered','Region Code','Sub-region Code','Intermediate Region Code']:
         combined_df[c] = pd.to_numeric(combined_df[c], errors='coerce',downcast='integer')
+        combined_df.fillna(0,inplace=True)
+        combined_df[c] = combined_df[c].astype(int)
     combined_df.fillna(0,inplace=True) # Filling Nan with 0
+
+
 
     #If no province available, fill with Country/Region
     combined_df['Location'] = np.where(combined_df['Province/State']==0,combined_df['Country/Region'] , combined_df['Province/State'])
@@ -51,9 +55,10 @@ def data_ingest():
     combined_df['New Recovered'] = combined_df.groupby(['Country/Region','Province/State'])['Recovered'].diff(periods=-1).fillna(0)
     combined_df = combined_df.sort_values(['Country/Region','Province/State'], ascending = True)
 
-
-    # print(combined_df)
-
+    for c in ['New Confirmed','New Death','New Recovered']:
+        combined_df[c] = pd.to_numeric(combined_df[c], errors='coerce',downcast='integer')
+        # combined_df.fillna(0,inplace=True)
+        combined_df[c] = combined_df[c].astype(int)
 
     #Writing to a xlsx file
     combined_df.to_excel(r'combined.xlsx',index=False)
@@ -64,6 +69,7 @@ def data_ingest():
     # Writing to csv file
     base_df.to_csv(r'covid.csv',index=False,sep='\t' )
 
+
     # Grouping by countries and Date -> Result : Countries with all days
     aggregations = { 'Lat':'first','Long':'first','Confirmed':'sum',
     'Active':'sum','Death':'sum','Recovered':'sum',
@@ -73,6 +79,7 @@ def data_ingest():
     countryDays_df.loc[countryDays_df['Death'] == 0, 'Fatality Rate'] = 0
     countryDays_df.loc[countryDays_df['Death'] > 0, 'Fatality Rate'] = round((countryDays_df['Death']/countryDays_df['Confirmed'])*100,2)
     countryDays_df.loc[countryDays_df['Confirmed'] == 0, 'Fatality Rate'] = 0
+
     # print(countryDays_df.isnull().sum())
     # Finding the latest date
     latest_date = combined_df['Date'].max() #Finding latest date
@@ -120,10 +127,10 @@ def data_ingest():
 
     # print(sum_df)
 
-    countryDays_df.to_csv(r'countryDays_df.csv',index=False,sep='\t' )
+    # countryDays_df.to_csv(r'countryDays_df.csv',index=False,sep='\t' )
 #
 #
     # print(combined_df,base_df,countryDays_df,latest_df, countryLatest_df.head())
-    # print(latest_df.dtypes)
+    # print(countryLatest_df.dtypes)
     return base_df,countryDays_df,latest_df, countryLatest_df,canada_df
 # data_ingest()
