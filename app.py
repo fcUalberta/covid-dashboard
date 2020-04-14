@@ -21,7 +21,6 @@ from dateutil.relativedelta import relativedelta
 # Importing dependencies
 from data_ingest import data_ingest
 from forecasting import forecast
-
 from clustering_dataload import initial_data,scatter_data,sunburst_single,sunburst_multi
 
 # df-> Countries and provinces with All days
@@ -29,16 +28,25 @@ from clustering_dataload import initial_data,scatter_data,sunburst_single,sunbur
 # latest_df -> Countries and provinces with latest date
 # country_df -> Countries with latest date
 
-df,countryDays_df,latest_df, country_df,canada_df = data_ingest()
+df,countryDays_df,latest_df, country_df,canada_df,sumdf = data_ingest()
 df_covid = initial_data() #Loading Covid Research Database DF
 #added for tab-1
 
 # alldf = pd.read_csv("countryDays_df.csv",sep='\t')
+latest_df1 = latest_df.sort_values(['Confirmed'], ascending = False)
+# country_df1 = country_df.sort_values(['Confirmed'], ascending = False)
+top_conf_df = country_df.sort_values(['Confirmed'], ascending = False)
+top_active_df = country_df.sort_values(['Active'], ascending = False)
+top_death_df = country_df.sort_values(['Death'], ascending = False)
+top_recovered_df = country_df.sort_values(['Recovered'], ascending = False)
+
+# alldf = pd.read_csv("countryDays_df.csv",sep='\t')
 new_df = country_df[['Country/Region','Confirmed','Death','Recovered']]
 # df = pd.read_csv("covid.csv",sep='\t')
-sumdf = pd.read_csv("sumdf.csv",sep='\t')
+# sumdf = pd.read_csv("sumdf.csv",sep='\t')
+desc_country_df = country_df.sort_values(['Confirmed'], ascending = False)
 
-countries = country_df["Country/Region"]
+countries = desc_country_df["Country/Region"]
 
 # newdf = sumdf.loc[sumdf['Date'] == list(latest_df['Date'])[0]]
 
@@ -47,8 +55,10 @@ confirmedVal = '{:,d}'.format(latest_df['Confirmed'].sum())
 ActiveVal = '{:,d}'.format(latest_df["Active"].sum())
 DeathVal = '{:,d}'.format(latest_df["Death"].sum())
 RecoveredVal = '{:,d}'.format(latest_df["Recovered"].sum())
-
-template = 'plotly'
+FatalityRate = '{:.2f}'.format(latest_df["Death"].sum()/latest_df['Confirmed'].sum()*100)+"%"
+newConfirmedVal = '{:,d}'.format(latest_df['New Confirmed'].sum())
+newDeathVal = '{:,d}'.format(latest_df['New Death'].sum())
+newRecoveredVal = '{:,d}'.format(latest_df['New Recovered'].sum())
 epoch = datetime.datetime.utcfromtimestamp(0)
 
 
@@ -128,15 +138,19 @@ for i in range(len(cols)):
 """ ###################################################
 Custom Styling
 ###################################################"""
-
+template = 'simple_white'
 colors = {
     'page_color': '#000000',
     'background': '#75D5FF',
     'bg': '#DCF3FF',
     'text': '#000000',
     'text1':'#000000',
+    'text3':'#666666',
+    'text2':'#FFFFFF',
     'graph_bg_color':'#FFFFFF',
+    'graph_map_color':'#FFFFFF',
     'graph_text':'#000000',
+    'div_color1':' #F1F1F1',
     'heading':'#C01414',
     'Confirmed': '#192AB4',
     'Active': '#ff6f00',
@@ -146,6 +160,13 @@ colors = {
     'titlebox_border':'thin lightgrey solid',
     'titlebox_background':'rgb(250, 250, 250)',
     # 'analytics_tab_color':''
+}
+colorscales = {
+'Confirmed': 'portland',
+'Active': 'oranges',
+'Death': 'reds',
+# 'Recovered': 'rdylgn'
+'Recovered':'viridis'
 }
 
 title_box = {
@@ -199,7 +220,7 @@ graph_style = {
 # 'borderBottom': '1px solid #d6d6d6',
 'padding': '2px',
 # 'display': 'inline-block',
-'box-shadow': '3px 3px 3px 3px lightgrey',
+# 'box-shadow': '3px 3px 3px 3px lightgrey',
 'padding-top':'2px',
 'float':'center',
 'backgroundColor':colors['graph_bg_color'],
@@ -217,6 +238,11 @@ graph_style1 = {
 'backgroundColor':colors['graph_bg_color'],
 'plot_bgcolor': colors['graph_bg_color']
 
+}
+div_small_text = {
+'font-size': '11px',
+'text-align':'center',
+'color' : colors['text1']
 }
 
 it_content = {
@@ -283,6 +309,7 @@ app.layout = html.Div(children=[
 
     html.H2("COVID-19 Dashboard",
     style={'text-align':'center','font-family':'sans-serif','color': colors['text']}),
+    html.H5("Asket Kaur | Frincy Clement | Maryam Sedghi",style={'text-align':'center','font-family':'sans-serif','color': "crimson"}),
 
     # Parent of all tabs
     dcc.Tabs(id="tabs-styled-with-inline",
@@ -296,249 +323,215 @@ app.layout = html.Div(children=[
         children = [
             html.Div(
                 children=[
-                        # Left-Most-Panel
+                            # Page-1
+                            html.Div(
+                                children = [
+                                    # Left-Panel
                                     html.Div(
-                                        className="two columns div-left-panel",
                                         children = [
-                                                    #Global-Cases-div
-                                                    html.Div(
-                                                        children = [
-                                                            #Global-Confirmed-Cases
-                                                                html.Div(
-                                                                    children = [
-                                                                                    html.Div([html.P('Confirmed Cases')],
-                                                                                    style = {'padding-top': "13px", 'color': colors["Confirmed"],
-                                                                                    'font-weight': 'bold'},
-                                                                                    className = "GlobalName"),
-                                                                                    html.Div([html.P(''+confirmedVal)], style = {'color': colors["Confirmed"], 'font-weight': 'bold'},className = "GlobalValue")
-                                                                                ],
-                                                                     className="first",
-                                                                ),
-                                                            #Global-Active-Cases
-                                                                html.Div(
-                                                                    children = [
-                                                                                    html.Div([html.P('Active Cases')],style = {'color': colors['Active'], 'font-weight': 'bold'}, className = "GlobalName"),
-                                                                                    html.Div([html.P(''+ActiveVal)], style = {'color': colors['Active'], 'font-weight': 'bold'}, className = "GlobalValue"),
-                                                                                ],
-                                                                    className="first",
-                                                                ),
-                                                            #Global-Death
-                                                                html.Div(
-                                                                    children = [
-                                                                                    html.Div([html.P('Deaths')], style = {"color": colors['Death'], 'font-weight': 'bold'}, className = "GlobalName"),
-                                                                                    html.Div([html.P(''+DeathVal)], style = {"color": colors['Death'], 'font-weight': 'bold'}, className = "GlobalValue"),
-                                                                                ],
-                                                                    className="first",
-                                                                ),
-                                                            #Global-Recovered
-                                                                html.Div(
-                                                                    children = [
-                                                                                    html.Div([html.P('Recovered')], style = {'color': colors['Recovered'], 'font-weight': 'bold'}, className = "GlobalName"),
-                                                                                    html.Div([html.P(''+RecoveredVal)], style = {'color': colors['Recovered'], 'font-weight': 'bold'}, className = "GlobalValue"),
-                                                                                ],
-                                                                    className="first",
-                                                                ),
-                                                                ],style={"display": "flex", "flex-direction": "column"}
-                                                            ),# End of Global-Cases div
+                                            #Global-Cases-div
+                                            html.Div(
+                                                children = [
+                                                    #Global-Confirmed-Cases
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('Confirmed Cases')],
+                                                                            style = {'padding-top': "13px"},
+                                                                            className = "GlobalName"),
+                                                                            html.Div([html.P(''+confirmedVal)], style = {'color': colors["Confirmed"], 'font-weight': 'bold'},className = "GlobalValue")
+                                                                        ],
+                                                             className="first",
+                                                        ),
+                                                    #Global-Active-Cases
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('Active Cases')], className = "GlobalName"),
+                                                                            html.Div([html.P(''+ActiveVal)], style = {'color': colors['Active'], 'font-weight': 'bold'}, className = "GlobalValue"),
+                                                                        ],
+                                                            className="first",
+                                                        ),
+                                                    #Global-Death
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('Deaths')], className = "GlobalName"),
+                                                                            html.Div([html.P(''+DeathVal)], style = {"color": colors['Death'], 'font-weight': 'bold'}, className = "GlobalValue"),
+                                                                        ],
+                                                            className="first",
+                                                        ),
+                                                    #Global-Recovered
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('Recovered')], className = "GlobalName"),
+                                                                            html.Div([html.P(''+RecoveredVal)], style = {'color': colors['Recovered'], 'font-weight': 'bold'}, className = "GlobalValue"),
+                                                                        ],
+                                                            className="first",
+                                                        ),
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('Fatality Rate')], className = "GlobalName"),
+                                                                            html.Div([html.P(''+FatalityRate)], style = {'color': colors['Death'], 'font-weight': 'bold'}, className = "GlobalValue"),
+                                                                        ],
+                                                            className="first",
+                                                        ),
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('New Confirmed Cases')],
+                                                                            # style = {'padding-top': "13px"},
+                                                                            className = "GlobalName"),
+                                                                            html.Div([html.P(''+newConfirmedVal)], style = {'color': colors["text3"], 'font-weight': 'bold'},className = "GlobalValue")
+                                                                        ],
+                                                             className="first",
+                                                        ),
 
-                                                #Div-for-spacing
-                                                html.Div(style = {"padding":20}),
+                                                    #Global-Death
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('New Deaths')], className = "GlobalName"),
+                                                                            html.Div([html.P(''+newDeathVal)], style = {"color": colors['text3'], 'font-weight': 'bold'}, className = "GlobalValue"),
+                                                                        ],
+                                                            className="first",
+                                                        ),
+                                                    #Global-Active-Cases
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div([html.P('New Recovered Cases')], className = "GlobalName"),
+                                                                            html.Div([html.P(''+newRecoveredVal)], style = {'color': colors['text3'], 'font-weight': 'bold'}, className = "GlobalValue"),
+                                                                        ],
+                                                            className="first",
+                                                        ),
 
-                                                #Top-5-Countries-Div
+                                                        html.Div(style = {"padding":29})
+                                                        ],style={"display": "flex", "flex-direction": "column"},
+                                                    ),# End of Global-Cases div
+                                            ], style = {"height":"100vh"},className="two columns div-left-panel"),
+
+                                            #Choropleth-Map
+                                            html.Div([
+                                                #Drop-Down-1-Div
+                                                html.Div([
+                                                            html.P('Select from the drop down'
+                                                            ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
+                                                            dcc.Dropdown(id='option',
+                                                                         options=target_options1,
+                                                                         value ='Confirmed',
+                                                                         style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}),
+                                                            html.Div(style = {"padding":3}),# For vertical space
+                                                        ],className = "drop-down"),
+                                                #Chlorepath-Div
+                                                html.Div([
+                                                            dcc.Graph(id='chlorepath',
+                                                                      style = {"height":"70vh"}, clickData={'points': [{'customdata': ''}]}),
+                                                          ], style = graph_style,className = "twelve columns"),
+                                                ], className="seven columns"),
+
+                                        #Right-panel
+                                        html.Div(
+                                            children = [
+                                                #World/Country Name
+                                                html.Div(id = "type"),
+
+                                                #Column-Name-Country/Province-Confirmed-Death-Recovered
                                                 html.Div(
                                                     children = [
-                                                        #Div-for-title
-                                                        html.Div([html.P('Top 5 Countries',style= inner_tab_style)]),
-                                                        #US-Div
+                                                        #Country/Province
+                                                        html.Div([html.P('Country/Province',style={'text-align':'center','font-family':'sans-serif', 'width' : '18vh', 'font-size': '12px', 'color': '#303030'})]),
+                                                        #Confirmed
                                                         html.Div(
-                                                            children = [
-                                                                        html.Div([html.P('US', style = {'font-size': '12px'})],className = "top-count-name"),
-                                                                        html.Div(id = "us"),
-                                                                    ],className="topcount",
-                                                                ),
-                                                        #Spain-Div
+                                                                  children = [html.P('Confirmed',style={'text-align':'center','font-family':'sans-serif', 'width' : '10vh', 'font-size': '12px', 'color': '#303030'}),
+                                                                              html.Div(id = "count_total_comfirmed")
+                                                                  ]),
+                                                        #Death
                                                         html.Div(
-                                                            children = [
-                                                                        html.Div([html.P('Spain', style = {'font-size': '12px'})], className = "top-count-name"),
-                                                                        html.Div(id = "spain"),
-                                                                    ],className="topcount",
-                                                                ),
-                                                        #Italy-Div
+                                                                  children = [html.P('Death',style={'text-align':'center','font-family':'sans-serif', 'width' : '10vh', 'font-size': '12px', 'color': '#303030'}),
+                                                                              html.Div(id = "count_total_death")
+                                                                  ]),
+                                                        #Recovered
                                                         html.Div(
-                                                            children = [
-                                                                        html.Div([html.P('Italy', style = {'font-size': '12px'})], className = "top-count-name"),
-                                                                        html.Div(id = "italy"),
-                                                                    ],className="topcount",
-                                                                ),
-                                                        #Germany-Div
-                                                        html.Div(
-                                                            children = [
-                                                                        html.Div([html.P('Germany', style = {'font-size': '12px'})], className = "top-count-name"),
-                                                                        html.Div(id = "germany"),
-                                                                    ],className="topcount",
-                                                                ),
-                                                        #France-Div
-                                                        html.Div(
-                                                            children = [
-                                                                        html.Div([html.P('France', style = {'font-size': '12px'})], className = "top-count-name" ),
-                                                                        html.Div(id = "france"),
-                                                                    ],className="topcount",
-                                                                ),
-                                                        #China-Div
-                                                        html.Div(
-                                                        children = [
-                                                                        html.Div([html.P('China', style = {'font-size': '12px'})], className = "top-count-name"),
-                                                                        html.Div(id = "china"),
-                                                                    ],className="topcount",
-                                                                ),
-                                                        #Iran-Div
-                                                        html.Div(
-                                                            children = [
-                                                                        html.Div([html.P('Iran', style = {'font-size': '12px'})], className = "top-count-name"),
-                                                                        html.Div(id = "iran"),
-                                                                    ],className="last",
-                                                                ),
-                                                    ])#End-of-Top-5-Countries-Div
-                                            ]),#End-of-Left-Most-Div
+                                                                  children = [html.P('Recovered',style={'text-align':'center','font-family':'sans-serif', 'width' : '10vh', 'font-size': '12px', 'color': '#303030'}),
+                                                                              html.Div(id = "count_total_recovered")
+                                                                  ])
+                                                ],style={"display": "flex", "flex-direction": "rows"}),
 
-                                            # Maps-Div
-                                            html.Div(
-                                                className="seven columns",
-                                                children = [
-                                                    #Drop-Down-1-Div
+                                                #Column-Values-Country/Province-Confirmed-Death-Recovered
+                                                html.Div(
+                                                    children = [
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div(
+                                                                                        id = "div-1"),
+                                                                        ],style = {'width' : '19vh'},
+                                                                ),
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div(
+                                                                                        id = "div-2"),
+                                                                        ],style = {'width' : '11vh'},
+                                                                ),
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div(
+                                                                                        id = "div-3"),
+                                                                        ],style = {'width' : '11vh'},
+                                                                ),
+                                                        html.Div(
+                                                            children = [
+                                                                            html.Div(
+                                                                                        id = "div-4"),
+                                                                        ],style = {'width' : '11vh'},
+                                                                ),
+                                                ],style={"display": "flex", "flex-direction": "rows", 'height': '30vh', 'overflowY': 'scroll', 'padding-right':'5px'}),
+
+                                                #Vertical-Space
+                                                html.Div(style = {"padding":15}),
+
+                                                #Bar-Chart
                                                 html.Div([
+                                                            dcc.Graph(id = 'onebar',style = {"height":"40vh"})
+                                                ],style = {"padding-left":'10px'}),
+                                            ],style = {"height":"100vh"},className = "special columns div-right-panel"),#End-of-Right-Tab
+                                        ],style={"display": "flex", "flex-direction": "row"}),#End-of-Page-1
+
+                                        # Page-2
+                                        html.Div(
+                                            children = [
+                                                # Left-Panel
+                                                html.Div(
+                                                    children = [
+                                                        #Top-7-Countries-Div
+                                                        html.Div(
+                                                            children = [
+                                                                #Div-for-title
+                                                                html.Div([html.P('Top 10 Countries',style= inner_tab_style)]),
+                                                                html.Div(
+                                                                    children = [
+                                                                                    html.Div(id = "top-7")
+                                                                            ],
+                                                                        ),
+                                                                ]),#End-of-Top-7-Countries-Div
+                                                    ], style = {"height":"110vh"},className="two columns div-left-panel"),#Left-Panel-End
+
+                                                #Bubble-Map
                                                 html.Div([
-                                                    html.P("Select the data"),
-                                                    dcc.Dropdown(
-                                                           id='option',
-                                                           options=target_options,
-                                                           value='Confirmed',
-                                                           style={'width':'60%', 'text-align':'left', 'color':colors["text1"],'float':'center'}
-                                                    ),],style={'margin-left': '380px'}),
-                                                    # ], style={'width': '49%', 'margin-left': '120px','float': 'right'}),
-                                                ], style=title_box,className = "container"),
+                                                #Drop-Down-2-Div
+                                                html.Div([
+                                                            html.P('Select from the drop down'
+                                                                    ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
+                                                            dcc.Dropdown(id='optionbubble',
+                                                                         options=target_options,
+                                                                         value ='Confirmed',
+                                                                         style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}),
+                                                            html.Div(style = {"padding":3}),# For vertical space
+                                                        ],className = "drop-down"),
+                                                #Bubble Map
+                                                html.Div([
+                                                           dcc.Graph(id='bubblemap',
+                                                                     style = {"height":"70vh"}),
+                                                        ],style = graph_style),
+                                                ],className="seven columns"),
 
-                                                    # html.Div([
-                                                    #             html.P('Select from the drop down'
-                                                    #             ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
-                                                    #             dcc.Dropdown(id='option',
-                                                    #                          options=target_options,
-                                                    #                          value ='Confirmed',
-                                                    #                          style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}, className = "container"),
-                                                    #             html.Div(style = {"padding":3}),# For vertical space
-                                                            # ],style = title_box, className = "drop-down"),
-                                                    #Chlorepath-Div
-                                                    html.Div([
-                                                                dcc.Graph(id='chlorepath',
-                                                                          style = {"height":"70vh"}, clickData={'points': [{'customdata': ''}]},
-                                                                        config={'displayModeBar': False}),
-                                                              ], style = graph_style1),
-                                                    #Drop-Down-2-Div
-                                                    html.Div(style = {"padding":20}),# For vertical space
-                                                    html.Div([
-                                                    html.Div([
-                                                        html.P("Select the data"),
-                                                        dcc.Dropdown(
-                                                               id='optionbubble',
-                                                               options=target_options,
-                                                               value='Confirmed',
-                                                               style={'width':'60%', 'text-align':'left', 'color':colors["text1"],'float':'center'}
-                                                           ),],style={'margin-left': '380px'}),
-                                                    # ], style={'width': '49%', 'margin-left': '120px','float': 'right'}),
-                                                    ], style=title_box,className = "container1"),
-                                                    # html.Div([
-                                                    #             html.P('Select from the drop down'
-                                                    #                     ,style={'text-align':'center','font-family':'sans-serif', 'color': colors['text']}),
-                                                    #             dcc.Dropdown(id='optionbubble',
-                                                    #                          options=target_options,
-                                                    #                          value ='Confirmed',
-                                                    #                          style={'width':'55%', 'margin-left': '120px', 'text-align':'center', 'color':colors["text1"]}),
-                                                    #             html.Div(style = {"padding":3}),# For vertical space
-                                                    #         ],className = "drop-down"),
-                                                    #Vertical-Space
-                                                    html.Div(style = {"padding":10}),# For vertical space
-                                                    #Bubble Map
-                                                    html.Div([
-                                                               dcc.Graph(id='bubblemap',
-                                                                         style = {"height":"70vh"},
-                                                                         config={'displayModeBar': False}),
-                                                            ],style = graph_style1),
-                                            ]),#End-of-Map-Panel
-
-                                            #Right-Most-Panel
-                                            html.Div(
-                                                className = "special columns div-right-panel",
-                                                children = [
-
-                                                    #Table-Div
-                                                    html.Div(
-                                                        children = [
-                                                            #World/Country Name
-                                                            html.Div(id = "type"),
-
-                                                            #Column-Name-Country/Province-Confirmed-Death-Recovered
-                                                            html.Div(
-                                                                children = [
-                                                                    #Country/Province
-                                                                    html.Div([html.P('Country/Province',style={'text-align':'center','font-family':'sans-serif', 'width' : '19vh', 'font-size': '11px', 'color': '#303030'})]),
-                                                                    #Confirmed
-                                                                    html.Div(
-                                                                              children = [html.P('Confirmed',style={'text-align':'center','font-family':'sans-serif', 'width' : '11vh', 'font-size': '11px', 'color': '#303030'}),
-                                                                                          html.Div(id = "count_total_comfirmed")
-                                                                              ]),
-                                                                    #Death
-                                                                    html.Div(
-                                                                              children = [html.P('Death',style={'text-align':'center','font-family':'sans-serif', 'width' : '11vh', 'font-size': '11px', 'color': '#303030'}),
-                                                                                          html.Div(id = "count_total_death")
-                                                                              ]),
-                                                                    #Recovered
-                                                                    html.Div(
-                                                                              children = [html.P('Recovered',style={'text-align':'center','font-family':'sans-serif', 'width' : '11vh', 'font-size': '11px', 'color': '#303030'}),
-                                                                                          html.Div(id = "count_total_recovered")
-                                                                              ])
-                                                                ],style={"display": "flex", "flex-direction": "rows"}),
-
-                                                            #Column-Values-Country/Province-Confirmed-Death-Recovered
-                                                            html.Div(
-                                                                children = [
-                                                                    html.Div(
-                                                                        children = [
-                                                                                        html.Div(
-                                                                                                    id = "div-1"),
-                                                                                    ],style = {'width' : '19vh'},
-                                                                            ),
-                                                                    html.Div(
-                                                                        children = [
-                                                                                        html.Div(
-                                                                                                    id = "div-2"),
-                                                                                    ],style = {'width' : '11vh'},
-                                                                            ),
-                                                                    html.Div(
-                                                                        children = [
-                                                                                        html.Div(
-                                                                                                    id = "div-3"),
-                                                                                    ],style = {'width' : '11vh'},
-                                                                            ),
-                                                                    html.Div(
-                                                                        children = [
-                                                                                        html.Div(
-                                                                                                    id = "div-4"),
-                                                                                    ],style = {'width' : '11vh'},
-                                                                            ),
-                                                                ],style={"display": "flex", "flex-direction": "rows", 'height': '20vh', 'overflowY': 'scroll'})
-                                                        ]),#End-of-Table-div
-
-                                                        #Vertical-Space
-                                                        html.Div(style = {"padding":7}),
-
-                                                        #Bar-Chart
-                                                        html.Div([
-                                                                    dcc.Graph(id = 'onebar',style = {"height":"40vh"})
-                                                        ]),
-
-                                                        #Vertical-Space
-                                                        html.Div(style = {"padding":8}),
-
+                                                #Right-panel
+                                                html.Div(
+                                                    children = [
                                                         #Line-Chart
                                                         html.Div([
                                                                     dcc.Graph(id = 'oneline',style = {"height":"40vh"})
@@ -551,12 +544,12 @@ app.layout = html.Div(children=[
                                                         html.Div([
                                                                     dcc.Graph(id = 'doughnut',style = {"height":"40vh"})
                                                         ]),
+                                                        html.Div(style = {"padding":47})
+                                                    ],style = {"height":"110vh",'padding-left':'20px','padding-right':'5px'},className = "panel columns div-right-panel")
+                                        ],style={"display": "flex", "flex-direction": "row"}),#End-Page-2
+                                    ],style={"display": "flex", "flex-direction": "column"}),#End-of both-pages
+                            ]),#End-Tab-1
 
-                                                        #Vertical-Space
-                                                        html.Div(style = {"padding":45}),
-                                                ],style = {"height":"100%"})#End-of-Right-Most-Panel
-                                    ],className = "page", style={"display": "flex", "flex-direction": "row"}),
-        ]), # End of Tab 1
 
         # Tab 2
         dcc.Tab(label='Canada Trends',
@@ -992,9 +985,9 @@ app.layout = html.Div(children=[
 
               html.Div([
                 html.Div([
-                    dcc.Graph(id='dendrogram1',style = {"height":"80vh"},className="twelve columns"),
+                    dcc.Graph(id='dendrogram1',style = {"height":"80vh","width":"100vh"},className="twelve columns"),
 
-                ],style = graph_style),
+                ]),
 
                 ],className="row"),
 
@@ -1009,85 +1002,106 @@ app.layout = html.Div(children=[
 
 ])
 
-
-@app.callback(Output('us','children'),
-            [Input('optionbubble','value')])
-def update_div(case):
-    country = country_df.loc[country_df['Country/Region'] == "US"]
-    return_divs = []
-    return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
-    return return_divs
-
-@app.callback(Output('spain','children'),
-            [Input('optionbubble','value')])
-def update_div(case):
-    country = country_df.loc[country_df['Country/Region'] == "Spain"]
-    return_divs = []
-    return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
-    return return_divs
-
-@app.callback(Output('italy','children'),
-            [Input('optionbubble','value')])
-def update_div(case):
-    country = country_df.loc[country_df['Country/Region'] == "Italy"]
-    return_divs = []
-    return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
-    return return_divs
-
-@app.callback(Output('germany','children'),
-            [Input('optionbubble','value')])
-def update_div(case):
-    country = country_df.loc[latest_df['Country/Region'] == "Germany"]
-    return_divs = []
-    return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
-    return return_divs
-
-@app.callback(Output('france','children'),
-            [Input('optionbubble','value')])
-def update_div(case):
-    country = country_df.loc[country_df['Country/Region'] == "France"]
-    return_divs = []
-    return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
-    return return_divs
-
-@app.callback(Output('china','children'),
-            [Input('optionbubble','value')])
-def update_div(case):
-    country = country_df.loc[country_df['Country/Region'] == "China"]
-    return_divs = []
-    return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
-    return return_divs
-
-@app.callback(Output('iran','children'),
-            [Input('optionbubble','value')])
-def update_div(case):
-    country = country_df.loc[country_df['Country/Region'] == "Iran"]
-    return_divs = []
-    return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
-    return return_divs
+#
+# @app.callback(Output('us','children'),
+#             [Input('optionbubble','value')])
+# def update_div(case):
+#     country = country_df.loc[country_df['Country/Region'] == "US"]
+#     return_divs = []
+#     return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
+#     return return_divs
+#
+# @app.callback(Output('spain','children'),
+#             [Input('optionbubble','value')])
+# def update_div(case):
+#     country = country_df.loc[country_df['Country/Region'] == "Spain"]
+#     return_divs = []
+#     return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
+#     return return_divs
+#
+# @app.callback(Output('italy','children'),
+#             [Input('optionbubble','value')])
+# def update_div(case):
+#     country = country_df.loc[country_df['Country/Region'] == "Italy"]
+#     return_divs = []
+#     return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
+#     return return_divs
+#
+# @app.callback(Output('germany','children'),
+#             [Input('optionbubble','value')])
+# def update_div(case):
+#     country = country_df.loc[latest_df['Country/Region'] == "Germany"]
+#     return_divs = []
+#     return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
+#     return return_divs
+#
+# @app.callback(Output('france','children'),
+#             [Input('optionbubble','value')])
+# def update_div(case):
+#     country = country_df.loc[country_df['Country/Region'] == "France"]
+#     return_divs = []
+#     return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
+#     return return_divs
+#
+# @app.callback(Output('china','children'),
+#             [Input('optionbubble','value')])
+# def update_div(case):
+#     country = country_df.loc[country_df['Country/Region'] == "China"]
+#     return_divs = []
+#     return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
+#     return return_divs
+#
+# @app.callback(Output('iran','children'),
+#             [Input('optionbubble','value')])
+# def update_div(case):
+#     country = country_df.loc[country_df['Country/Region'] == "Iran"]
+#     return_divs = []
+#     return_divs.append(html.P(''+country[case].astype(int).apply(str),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '20px'}))
+#     return return_divs
 
 @app.callback(
     Output('chlorepath','figure'),
     [Input('option', 'value')])
 def update_table(column):
 
+        if column == 'Recovered':
+            colorscale = "greens"
+        elif column == 'Death':
+            colorscale = colorscales["Death"]
+        else:
+            colorscale = colorscales["Confirmed"]
+
+        my_text = [country+'<br>Confirmed Cases: '+'{:,d}'.format(confirmed)+'<br>Deaths:'+'{:,d}'.format(deaths)+
+      '<br>Recovered: '+'{:,d}'.format(recovered)+'<br>Fatality Rate:'+'{:.2f} %'.format(fatality)+
+      '<br>Latest New Cases: '+'{:,d}'.format(new_cases) +"<extra></extra>"
+      for country, confirmed, deaths, recovered, fatality, new_cases
+        in zip(list(country_df['Country/Region']),list(country_df['Confirmed']), list(country_df['Death']),
+        list(country_df['Recovered']), list(country_df['Fatality Rate']),
+          list(country_df['New Confirmed']))]
 
         fig = go.Figure(go.Choropleth(locationmode = 'country names', locations=country_df['Country/Region'], z=country_df[column],
-                                            colorscale= "portland",
+                                            colorscale= colorscale,
                                             zmin=country_df[column].min(), zmax=country_df[column].max(),
-                                            marker_opacity=1, marker_line_width=0.5, customdata = country_df['Country/Region']))
-        fig["layout"].update(paper_bgcolor=colors["graph_bg_color"], plot_bgcolor=colors["graph_bg_color"])
+                                            marker_opacity=1, marker_line_width=0.5,
+                                            text = country_df['Country/Region'],
+                                            customdata = country_df['Country/Region'],
+                                            hovertemplate= my_text))
+        fig["layout"].update(paper_bgcolor=colors["graph_map_color"], plot_bgcolor=colors["graph_map_color"])
 
 
         annotations = []
         continents = ['North America', 'South America', 'Africa','Europe',  'Asia', 'Australia']
         Lat = [0.165,0.295,0.557,0.63,0.76,0.90]
         Long = [0.725,0.47,0.560,0.727,0.64,0.40]
+        if column == 'Confirmed':
+            color = "white"
+        else:
+            color = "black"
 
         for lat,long,continent in zip(Lat,Long,continents):
                 annotations.append(dict(xref='paper', yref='paper', x=lat, y=long,
                                             text= continent,
-                                            font=dict(size=12, color='white'),
+                                            font=dict(size=12, color=color),
                                             showarrow=False))
 
         fig.update_layout(annotations = annotations,
@@ -1097,7 +1111,8 @@ def update_table(column):
                                 projection_type='equirectangular',
                                 ),
                                 dragmode= False,
-                                margin={"r":0,"t":0,"l":0,"b":0}
+                                margin={"r":0,"t":0,"l":0,"b":0},
+                                template= template,
                         )
 
         return fig
@@ -1109,17 +1124,31 @@ def update_table(column):
         alldf = countryDays_df
         # print(alldf.dtypes)
         alldf['Date'] = pd.to_datetime(alldf['Date'])
+        # months = [(i.strftime("%b")) for i in list(alldf['Date'])]
+        weeknum = [int(i.strftime("%V")) for i in list(alldf['Date'])]
         alldf['Date'] = alldf['Date'].dt.strftime('%x')
+      #   my_text = [country+'<br>Confirmed Cases: '+'{:,d}'.format(confirmed)+'<br>Deaths:'+'{:,d}'.format(deaths)+
+      # '<br>Recovered: '+'{:,d}'.format(recovered)+'<br>Fatality Rate:'+'{:.2f} %'.format(fatality)+
+      # '<br>Latest New Cases: '+'{:,d}'.format(new_cases) +"<extra></extra>"
+      # for country, confirmed, deaths, recovered, fatality, new_cases
+      #   in zip(list(alldf['Country/Region']),list(alldf['Confirmed']), list(alldf['Death']),
+      #   list(alldf['Recovered']), list(alldf['Fatality Rate']),
+      #     list(alldf['New Confirmed']))]
+
+        count_countries = (alldf['Country/Region']).count()
         fig = px.scatter_geo(alldf,
                     lat = "Lat",
                     lon = "Long",
-                    animation_frame="Date",
+                    animation_frame=weeknum,
                     size_max = 100,
-                    hover_data = ['Country/Region', column],
+
+                    hover_name = "Country/Region",
+                    hover_data = ['Confirmed','Active','Death','Recovered','Fatality Rate','New Confirmed'],
+                    # hovertemplate = my_text,
                     size=alldf[column],
-                    # color = 'Country/Region',
+                    # color = [colors[column]]*count_countries,
                     # color_continuous_scale= 'portland'
-                    # colorscale = "portland"
+                    # colorscale = colorscales["Confirmed"]
 
                     )
         annotations = []
@@ -1136,10 +1165,12 @@ def update_table(column):
         fig.update_layout(annotations = annotations,
                             geo=dict(
                                 showframe=False,
-                                showcoastlines=False,
+                                showcoastlines=True,
                                 projection_type='equirectangular'),
                             dragmode = False,
                             showlegend=False,
+                            # dragmode= False,
+                            template = "plotly",
                             margin={"r":0,"t":0,"l":0,"b":0},
                             paper_bgcolor=colors["graph_bg_color"], plot_bgcolor=colors["graph_bg_color"]
                         )
@@ -1148,181 +1179,324 @@ def update_table(column):
 
 @app.callback(Output('type','children'),
             [Input('chlorepath','clickData')])
-def update_div(hoverData):
-    country = hoverData['points'][0]['customdata']
-    if country == "Canada":
+def update_div(clickData):
+    country = clickData['points'][0]['customdata']
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
-    provinces = provincedf["Province/State"]
-    if len(provinces) == 1 or country == "" or country == "Canada":
+    provincedf = latest_df1.loc[latest_df1['Country/Region'] == country]
+    provinces = provincedf["Location"]
+    if country == "" :
             return_divs.append(html.P('World',style={'text-align':'center','font-family':'sans-serif', 'color': '#303030', 'font-size': '15px'}))
-    if len(provinces) != 1 and country != "Canada":
+    else:
         return_divs.append(html.P(country,style={'text-align':'center','font-family':'sans-serif', 'color': '#303030', 'font-size': '15px'}))
     return return_divs
 
+@app.callback(Output('top-7','children'),
+            [Input('optionbubble','value')])
+def update_div(case):
+    return_divs=[]
+    if(case == "Confirmed"):
+        for i in range(10):
+            top = top_conf_df.iloc[i]
+            # print(top)
+            return_divs.append( html.Div(
+                                          children = [html.P(top["Country/Region"] ,className = "top-count-name", style = {'font-size': '16px','font-style':'bold'}),
+                                          html.P(''+'{:,}'.format(top[case].astype(int)),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '24px'})], className = "topcount"))
+    if(case == "Active"):
+        for i in range(10):
+            top = top_active_df.iloc[i]
+            return_divs.append( html.Div(
+                                          children = [html.P(top["Country/Region"] ,className = "top-count-name", style = {'font-size': '16px'}),
+                                          html.P(''+'{:,}'.format(top[case].astype(int)),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '24px'})], className = "topcount"))
+    if(case == "Death"):
+        for i in range(10):
+            top = top_death_df.iloc[i]
+            return_divs.append( html.Div(
+                                          children = [html.P(top["Country/Region"] ,className = "top-count-name", style = {'font-size': '16px'}),
+                                          html.P(''+'{:,}'.format(top[case].astype(int)),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '24px'})], className = "topcount"))
+    if(case == "Recovered"):
+        for i in range(10):
+            top = top_recovered_df.iloc[i]
+            return_divs.append( html.Div(
+                                          children = [html.P(top["Country/Region"] ,className = "top-count-name", style = {'font-size': '16px'}),
+                                          html.P(''+'{:,}'.format(top[case].astype(int)),style={'text-align':'center','font-family':'sans-serif', 'color': colors[case], 'font-size': '24px'})], className = "topcount"))
+    return return_divs
 @app.callback(Output('div-1','children'),
             [Input('chlorepath','clickData')])
-def update_div(hoverData):
-    country = hoverData['points'][0]['customdata']
-    if country == "Canada" or country == "Syria":
+# def update_div(clickData):
+#     country = clickData['points'][0]['customdata']
+#     if country == "Syria" or country == "France":
+#         country = ""
+#     return_divs = []
+#     provincedf = latest_df1.loc[latest_df1['Country/Region'] == country]
+#     provincedf = provincedf.sort_values(['Confirmed'], ascending = False)
+#     provinces = provincedf["Province/State"]
+#     if len(provinces) != 1:
+#         if provinces.iloc(0) == 0:
+#             provinces = provinces[1:]
+#     if len(provinces) == 1 or country == "":
+#         for country in countries:
+#             # newdf = country_df.loc[country_df['Country/Region'] == country]
+#             return_divs.append(html.Div(html.P(""+country.upper(), style = {'font-size': '10px', 'text-align':'center', 'color': "#585858"})))
+#     else:
+#         for province in provinces:
+#             if province != "0":
+#                 # newdf = latest_df.loc[latest_df['Province/State'] == province]
+#                 return_divs.append(html.Div(html.P(""+province.upper(), style = {'font-size': '10px', 'text-align':'center', 'color': "#585858"})))
+#     return return_divs
+def update_div(clickData):
+    country = clickData['points'][0]['customdata']
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
-    provinces = provincedf["Province/State"]
-    if len(provinces) != 1:
-        if provinces.iloc(0) == 0:
-            provinces = provinces[1:]
-    if len(provinces) == 1 or country == "" or country == "Canada":
+    provincedf = latest_df1.loc[latest_df1['Country/Region'] == country]
+    # provincedf = provincedf.sort_values(['Confirmed'], ascending = False)
+    provinces = provincedf["Location"]
+    # if len(provinces) != 1:
+    #     if provinces.iloc(0) == 0:
+    #         provinces = provinces[1:]
+    if country == "":
         for country in countries:
-            newdf = country_df.loc[country_df['Country/Region'] == country]
-            return_divs.append(html.Div(html.P(""+country.upper(), style = {'font-size': '10px', 'text-align':'center', 'color': "#585858"})))
+            # newdf = country_df.loc[country_df['Country/Region'] == country]
+            return_divs.append(html.Div(html.P(""+country.upper(), style = div_small_text)))
     else:
         for province in provinces:
-            if province != "0":
-                newdf = latest_df.loc[latest_df['Province/State'] == province]
-                return_divs.append(html.Div(html.P(""+province.upper(), style = {'font-size': '10px', 'text-align':'center', 'color': "#585858"})))
+            # if province != "0":
+                # newdf = latest_df.loc[latest_df['Province/State'] == province]
+            return_divs.append(html.Div(html.P(""+province.upper(), style = div_small_text)))
     return return_divs
 
 @app.callback(Output('count_total_comfirmed','children'),
             [Input('chlorepath','clickData')])
-def update_div(hoverData):
-    country = hoverData['points'][0]['customdata']
-    if country == "Canada" or country == "Syria":
+# def update_div(hoverData):
+#     country = hoverData['points'][0]['customdata']
+#     if country == "Syria" or country == "France":
+#         country = ""
+#     return_divs = []
+#     provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+#     provinces = provincedf["Province/State"]
+#     if len(provinces) == 1 or country == "" or country == "Canada":
+#         return_divs.append(html.P(""+confirmedVal, style = {'font-size': '13px', 'text-align':'center', 'color': colors['text1']}))
+#     else:
+#         ndf = country_df.loc[country_df['Country/Region'] == country]
+#         return_divs.append(html.P(""+ndf["Confirmed"].astype(int).apply(str), style = {'font-size': '13px', 'text-align':'center', 'color': colors['text1']}))
+#     return return_divs
+def update_div(clickData):
+    country = clickData['points'][0]['customdata']
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
-    provinces = provincedf["Province/State"]
-    if len(provinces) == 1 or country == "" or country == "Canada":
-        return_divs.append(html.P(""+confirmedVal, style = {'font-size': '13px', 'text-align':'center', 'color': '#383838'}))
+    # provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+    # provinces = provincedf["Location"]
+    if country == "":
+        return_divs.append(html.P(""+confirmedVal, style = {'font-size': '14px', 'font-style':'bold','text-align':'center', 'color': colors['Confirmed']}))
     else:
-        ndf = country_df.loc[country_df['Country/Region'] == country]
-        return_divs.append(html.P(""+ndf["Confirmed"].astype(int).apply(str), style = {'font-size': '13px', 'text-align':'center', 'color': '#383838'}))
+        confirmed = desc_country_df.loc[desc_country_df['Country/Region'] == country, 'Confirmed'].iloc[0]
+        return_divs.append(html.P(""+ "{:,d}".format(confirmed), style = {'font-size': '14px', 'font-style':'bold', 'text-align':'center', 'color':colors['Confirmed']}))
     return return_divs
 
 @app.callback(Output('count_total_death','children'),
             [Input('chlorepath','clickData')])
-def update_div(hoverData):
-    country = hoverData['points'][0]['customdata']
-    if country == "Canada" or country == "Syria":
+# def update_div(hoverData):
+#     country = hoverData['points'][0]['customdata']
+#     if country == "Syria" or country == "France":
+#         country = ""
+#     return_divs = []
+#     provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+#     provinces = provincedf["Province/State"]
+#     if len(provinces) == 1 or country == "" or country == "Canada":
+#         return_divs.append(html.P(""+DeathVal, style = {'font-size': '13px', 'text-align':'center', 'color': '#da5657'}))
+#     else:
+#         ndf = country_df.loc[country_df['Country/Region'] == country]
+#         return_divs.append(html.P(""+ndf["Death"].astype(int).apply(str), style = {'font-size': '13px', 'text-align':'center', 'color': '#da5657'}))
+#     return return_divs
+def update_div(clickData):
+    country = clickData['points'][0]['customdata']
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
-    provinces = provincedf["Province/State"]
-    if len(provinces) == 1 or country == "" or country == "Canada":
-        return_divs.append(html.P(""+DeathVal, style = {'font-size': '13px', 'text-align':'center', 'color': '#da5657'}))
+    # provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+    # provinces = provincedf["Province/State"]
+    if country == "":
+        return_divs.append(html.P(""+ DeathVal, style = {'font-size': '14px', 'font-style':'bold', 'font-style':'bold' ,'text-align':'center', 'color': colors['Death']}))
     else:
-        ndf = country_df.loc[country_df['Country/Region'] == country]
-        return_divs.append(html.P(""+ndf["Death"].astype(int).apply(str), style = {'font-size': '13px', 'text-align':'center', 'color': '#da5657'}))
+        # ndf = country_df.loc[country_df['Country/Region'] == country]
+        death = (desc_country_df.loc[desc_country_df['Country/Region'] == country, "Death"].iloc[0])
+        # print("death",death)
+        return_divs.append(html.P(""+'{:,d}'.format(death), style = {'font-size': '14px', 'font-style':'bold', 'text-align':'center', 'color': colors['Death']}))
     return return_divs
 
 @app.callback(Output('count_total_recovered','children'),
             [Input('chlorepath','clickData')])
 def update_div(hoverData):
     country = hoverData['points'][0]['customdata']
-    if country == "Canada" or country == "Syria":
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
-    provinces = provincedf["Province/State"]
-    if len(provinces) == 1 or country == "" or country == "Canada":
-        return_divs.append(html.P(""+RecoveredVal, style = {'font-size': '13px', 'text-align':'center', 'color': '#45df7e'}))
+    # provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+    # provinces = provincedf["Province/State"]
+    if country == "":
+        return_divs.append(html.P(""+ RecoveredVal, style = {'font-size': '14px', 'font-style':'bold', 'text-align':'center', 'color': colors['Recovered']}))
     else:
-        ndf = country_df.loc[country_df['Country/Region'] == country]
-        return_divs.append(html.P(""+ndf["Recovered"].astype(int).apply(str), style = {'font-size': '13px', 'text-align':'center', 'color': '#45df7e'}))
+        # ndf = country_df.loc[country_df['Country/Region'] == country]
+        recovered = desc_country_df.loc[desc_country_df['Country/Region'] == country, 'Recovered'].iloc[0]
+        return_divs.append(html.P(""+ "{:,d}".format(recovered), style = {'font-size': '14px', 'font-style':'bold', 'text-align':'center', 'color':colors['Recovered']}))
     return return_divs
 
 
 @app.callback(Output('div-2','children'),
             [Input('chlorepath','clickData')])
-def update_div(hoverData):
-    country = hoverData['points'][0]['customdata']
-    if country == "Canada" or country == "Syria":
+# def update_div(hoverData):
+#     country = hoverData['points'][0]['customdata']
+#     if country == "Syria" or country == "France":
+#         country = ""
+#     return_divs = []
+#     provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+#     provinces = provincedf["Province/State"]
+#     if len(provinces) != 1:
+#         if provinces.iloc(0) == 0:
+#             provinces = provinces[1:]
+#     if len(provinces) == 1 or country == "" or country == "Canada":
+#         for country in countries:
+#                 newdf = country_df.loc[country_df['Country/Region'] == country]
+#                 return_divs.append(html.Div(html.P(""+newdf["Confirmed"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
+#     if len(provinces) != 1 and country != "Canada":
+#         for province in provinces:
+#             if province != "0":
+#                 newdf = latest_df.loc[latest_df['Province/State'] == province]
+#                 return_divs.append(html.Div(html.P(""+newdf["Confirmed"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
+#     return return_divs
+
+def update_div(clickData):
+    country = clickData['points'][0]['customdata']
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
-    provinces = provincedf["Province/State"]
-    if len(provinces) != 1:
-        if provinces.iloc(0) == 0:
-            provinces = provinces[1:]
-    if len(provinces) == 1 or country == "" or country == "Canada":
+    provincedf = latest_df1.loc[latest_df1['Country/Region'] == country]
+    provinces = provincedf["Location"]
+    if country == "":
         for country in countries:
-                newdf = country_df.loc[country_df['Country/Region'] == country]
-                return_divs.append(html.Div(html.P(""+newdf["Confirmed"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : '#383838'})))
-    if len(provinces) != 1 and country != "Canada":
+            confirmed = desc_country_df.loc[desc_country_df['Country/Region'] == country, 'Confirmed'].iloc[0]
+            return_divs.append(html.Div(html.P(""+"{:,d}".format(confirmed), style = div_small_text)))
+    else:
         for province in provinces:
-            if province != "0":
-                newdf = latest_df.loc[latest_df['Province/State'] == province]
-                return_divs.append(html.Div(html.P(""+newdf["Confirmed"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : '#383838'})))
+            confirmed = latest_df1.loc[latest_df1['Location'] == province, 'Confirmed'].iloc[0]
+            return_divs.append(html.Div(html.P(""+"{:,d}".format(confirmed), style = div_small_text)))
     return return_divs
 
 
 @app.callback(Output('div-3','children'),
             [Input('chlorepath','clickData')])
-def update_div(hoverData):
-    country = hoverData['points'][0]['customdata']
-    if country == "Canada" or country == "Syria":
+# def update_div(hoverData):
+#     country = hoverData['points'][0]['customdata']
+#     if country == "Syria" or country == "France":
+#         country = ""
+#     return_divs = []
+#     provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+#     provinces = provincedf["Province/State"]
+#     if len(provinces) != 1:
+#         if provinces.iloc(0)==0:
+#             provinces = provinces[1:]
+#     if len(provinces) == 1 or country == "" or country == "Canada":
+#         for country in countries:
+#             newdf = country_df.loc[country_df['Country/Region'] == country]
+#             return_divs.append(html.Div(html.P(""+newdf["Death"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
+#     if len(provinces) != 1 and country != "Canada":
+#         for province in provinces:
+#             if province != "0":
+#                 newdf = latest_df.loc[latest_df['Province/State'] == province]
+#                 return_divs.append(html.Div(html.P(""+newdf["Death"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
+#     return return_divs
+def update_div(clickData):
+    country = clickData['points'][0]['customdata']
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
-    provinces = provincedf["Province/State"]
-    if len(provinces) != 1:
-        if provinces.iloc(0)==0:
-            provinces = provinces[1:]
-    if len(provinces) == 1 or country == "" or country == "Canada":
+    provincedf = latest_df1.loc[latest_df1['Country/Region'] == country]
+    provinces = provincedf["Location"]
+    if country == "":
         for country in countries:
-            newdf = country_df.loc[country_df['Country/Region'] == country]
-            return_divs.append(html.Div(html.P(""+newdf["Death"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : '#383838'})))
-    if len(provinces) != 1 and country != "Canada":
+            death = desc_country_df.loc[desc_country_df['Country/Region'] == country, 'Death'].iloc[0]
+            return_divs.append(html.Div(html.P(""+"{:,d}".format(death), style = div_small_text)))
+            # newdf = country_df.loc[country_df['Country/Region'] == country]
+            # return_divs.append(html.Div(html.P(""+newdf["Death"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
+    else:
         for province in provinces:
-            if province != "0":
-                newdf = latest_df.loc[latest_df['Province/State'] == province]
-                return_divs.append(html.Div(html.P(""+newdf["Death"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : '#383838'})))
+            death = latest_df1.loc[latest_df1['Location'] == province, 'Death'].iloc[0]
+            return_divs.append(html.Div(html.P(""+"{:,d}".format(death), style = div_small_text)))
+            # if province != "0":
+            # newdf = latest_df.loc[latest_df['Province/State'] == province]
+            # return_divs.append(html.Div(html.P(""+newdf["Death"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
     return return_divs
+
 
 @app.callback(Output('div-4','children'),
             [Input('chlorepath','clickData')])
-def update_div(hoverData):
-    country = hoverData['points'][0]['customdata']
-    if country == "Canada" or country == "Syria" :
+def update_div(clickData):
+    country = clickData['points'][0]['customdata']
+    if country == "Syria" or country == "France":
         country = ""
     return_divs = []
-    provincedf = latest_df.loc[latest_df['Country/Region'] == country]
+    provincedf = latest_df1.loc[latest_df1['Country/Region'] == country]
     provinces = provincedf["Province/State"]
-    if len(provinces) != 1:
-        if provinces.iloc(0) == 0:
-            provinces = provinces[1:]
-    if len(provinces) == 1 or country == "" or country == "Canada":
+    if country == "":
         for country in countries:
-            newdf = country_df.loc[country_df['Country/Region'] == country]
-            return_divs.append(html.Div(html.P(""+newdf["Recovered"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : '#383838'})))
-    if len(provinces) != 1 and country != "Canada":
+            recovered = desc_country_df.loc[desc_country_df['Country/Region'] == country, 'Recovered'].iloc[0]
+            return_divs.append(html.Div(html.P(""+"{:,d}".format(recovered), style = div_small_text)))
+            # newdf = country_df.loc[country_df['Country/Region'] == country]
+            # return_divs.append(html.Div(html.P(""+newdf["Recovered"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
+    else:
         for province in provinces:
-            if province != "0":
-                newdf = latest_df.loc[latest_df['Province/State'] == province]
-                return_divs.append(html.Div(html.P(""+newdf["Recovered"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : '#383838'})))
+            # print("Count",latest_df1.loc[latest_df1['Country/Region']==country,'Recovered'].count())
+            # print(latest_df1.loc[latest_df1['Country/Region']==country,'Recovered'])
+            if (latest_df1.loc[latest_df1['Country/Region']==country,'Recovered'].count()>2 and country != 'Canada'):
+                recovered = latest_df1.loc[latest_df1['Location'] == province, 'Recovered'].iloc[0]
+                return_divs.append(html.Div(html.P(""+"{:,d}".format(recovered), style = div_small_text)))
+            else:
+                recovered = desc_country_df.loc[desc_country_df['Country/Region'] == country, 'Recovered'].iloc[0]
+                return_divs.append(html.Div(html.P(""+"{:,d}".format(recovered), style = div_small_text)))
+                return return_divs
+            # if province != "0":
+                # newdf = latest_df.loc[latest_df['Province/State'] == province]
+                # return_divs.append(html.Div(html.P(""+newdf["Recovered"].astype(int).apply(str), style = {'font-size': '10px', 'text-align':'center', 'color' : colors['text1']})))
     return return_divs
 
 @app.callback(Output('onebar','figure'),
             [Input('option', 'value'),
              Input('chlorepath','clickData')])
-def update_figure(value, hoverData):
-    country = hoverData['points'][0]['customdata']
-    str = "New"+" "+value
-    if str == "New Active":
-        str = "New Confirmed"
-        value = "Confirmed"
+def update_figure(value, clickData):
+
+    if value == 'Recovered':
+        colorscale = "greens"
+    elif value == 'Death':
+        colorscale = colorscales["Death"]
+    else:
+        colorscale = colorscales["Confirmed"]
+
+    country = clickData['points'][0]['customdata']
+    column = "New"+" "+value
+    # if str == "New Active":
+    #     str = "New Active"
+    #     value = "Confirmed"
     if country == "":
-        fig = go.Figure(go.Bar(x=sumdf['Date'], y=sumdf[str],name=value))
+        fig = go.Figure(go.Bar(x=sumdf['Date'], y=sumdf[column],name=value,
+                marker=dict(
+                color = sumdf[column],
+                colorscale = colorscale,)))
         country = "World"
     else:
         newcases_df = countryDays_df.loc[countryDays_df['Country/Region'] == country]
-        newcases_df = newcases_df.loc[newcases_df[str]!=0]
-        fig = go.Figure(go.Bar(x=newcases_df['Date'], y=newcases_df[str],
-                                name=value))
+        newcases_df = newcases_df.sort_values(column,ascending = True)
+        limit = (newcases_df[column].values != 0).argmax()
+        newcases_df = newcases_df[limit:]
+        newcases_df = newcases_df.sort_values('Date',ascending = True)
+        # newcases_df = newcases_df.loc[newcases_df[column]!=0]
+        fig = go.Figure(go.Bar(x=newcases_df['Date'], y=newcases_df[column],
+            marker=dict(color = newcases_df[column],colorscale = colorscale,), name=column))
     fig.update_layout(
     title={
-        'text': country+ " : " + str,
+        'text': country+ " : " + column +" Cases",
         'y':0.9,
         'x':0.5,
         'xanchor': 'center',
@@ -1332,8 +1506,9 @@ def update_figure(value, hoverData):
         size=11.5,
         color= '#303030'
     ),
-    paper_bgcolor= "rgb(250, 250, 250)",
-    plot_bgcolor= "rgb(250, 250, 250)",)
+    # template = "ggplot2",
+    paper_bgcolor= colors['div_color1'],
+    plot_bgcolor= colors['div_color1'],)
     fig.update_layout(margin={"r":1,"t":45,"l":1,"b":0})
     # fig = px.bar(province_df,x="Date",y="New Death")
     return fig
@@ -1341,25 +1516,46 @@ def update_figure(value, hoverData):
 @app.callback(Output('oneline','figure'),
             [Input('optionbubble', 'value')])
 def update_figure(value):
-    top_countries = ["US","Spain","Italy","Germany", "France", "China", "Iran"]
+    # top_countries = ["US","Spain","Italy","Germany", "France", "China", "Iran"]
+    limit = 10
+    if(value == "Confirmed"):
+        data = top_conf_df
+    if(value == "Active"):
+        data = top_active_df
+    if(value == "Death"):
+        data = top_death_df
+    if(value == "Recovered"):
+        data = top_recovered_df
+    top_countries = []
+    top_countries = list(data[:limit]['Country/Region'])
+    # for i in range(7):
+    #     top = data.iloc[i]
+    #     top_countries.append(top["Country/Region"])
     g_data = []
+    fig = go.Figure()
     for country in top_countries:
         ndf = countryDays_df.loc[countryDays_df['Country/Region'] == country]
-        trace = go.Scatter( x=ndf['Date'],
+        fig.add_trace(go.Scatter( x=ndf['Date'],
                             y=ndf[value],
                             mode='lines',
-                            name=country)
-        g_data.append(trace)
+                            name=country))
 
-    layout = go.Layout(
+        # trace = go.Scatter( x=ndf['Date'],
+        #                     y=ndf[value],
+        #                     mode='lines',
+        #                     name=country)
+        # g_data.append(trace)
+
+    fig.update_layout(
                             xaxis = dict(title='Date'),
                             yaxis = dict(title ='Number of '+value+' Cases'),
-                            hovermode = 'closest')
+                            hovermode = 'closest'),
+
     # fig = px.bar(province_df,x="Date",y="New Death")
-    fig = go.Figure(data = g_data,layout = layout)
+    # fig = go.Figure(data = g_data,layout = layout)
     fig.update_layout(
     title={
-        'text': value,
+        'text': "Top 10 Countries: "+value,
         'y':0.9,
         'x':0.5,
         'xanchor': 'center',
@@ -1369,30 +1565,49 @@ def update_figure(value):
         size=11.5,
         color= '#303030'
     ),
-    paper_bgcolor= "rgb(250, 250, 250)",
-    plot_bgcolor= "rgb(250, 250, 250)",)
+    paper_bgcolor= colors['div_color1'],
+    plot_bgcolor= colors['div_color1'],)
     fig.update_layout(margin={"r":1,"t":45,"l":1,"b":0})
     return fig
 
 @app.callback(Output('doughnut','figure'),
             [Input('optionbubble', 'value')])
 def update_figure(value):
-    labels = ["US","Spain","Italy","Germany", "France", "China", "Iran"]
-    values = []
-    for country in labels:
-        ndf = country_df.loc[country_df['Country/Region'] == country]
-        a = ndf[value].astype(int).to_numpy()
-        values.append(a[0])
+    # labels = ["US","Spain","Italy","Germany", "France", "China", "Iran"]
+    limit = 10
+    if(value == "Confirmed"):
+        data = top_conf_df
+    elif(value == "Active"):
+        data = top_active_df
+    elif(value == "Death"):
+        data = top_death_df
+    elif(value == "Recovered"):
+        data = top_recovered_df
+    labels = []
+
+    labels = list(data[:limit]['Country/Region'])
+    values = list(data[:limit][value])
+    # for i in range(7):
+    #     top = data.iloc[i]
+    #     labels.append(top["Country/Region"])
+    # data = data.sort_values(value,ascending = )
+    # labels = list(data[:limit]['Country/Region'])
+
+    # for country in labels:
+    #     ndf = country_df.loc[country_df['Country/Region'] == country]
+    #     a = ndf[value].astype(int).to_numpy()
+    #     values.append(a[0])
     # print(values)
-    fig = go.Figure(data=[go.Pie(labels=labels, values= values, hole=.3)])
+    fig = go.Figure(data=[go.Pie(labels=labels, values= values, hole=.3,
+                        marker=dict(colors=values, line=dict(color=[colors['text2']]*limit, width=0.5)))])
     fig.update_layout(
     font=dict(
         family="sans-serif",
         size=11.5,
         color= '#303030'
     ),
-    paper_bgcolor= "rgb(250, 250, 250)",
-    plot_bgcolor= "rgb(250, 250, 250)",)
+    paper_bgcolor= colors['div_color1'],
+    plot_bgcolor= colors['div_color1'],)
     fig.update_layout(margin={"r":1,"t":45,"l":1,"b":0})
     return fig
 
@@ -1428,9 +1643,7 @@ def canada_map(column,n):
       'hovertemplate' :my_text,
       "textfont": {
         "size":10,
-        # "color": ["#bebada", "#fdb462", "#fb8072", "#d9d9d9", "#bc80bd", "#b3de69", "#8dd3c7", "#80b1d3", "#fccde5", "#ffffb3"],
-        # "family": ["Arial, sans-serif", "Balto, sans-serif", "Courier New, monospace", "Droid Sans, sans-serif", "Droid Serif, serif", "Droid Sans Mono, sans-serif", "Gravitas One, cursive", "Old Standard TT, serif", "Open Sans, sans-serif", "PT Sans Narrow, sans-serif", "Raleway, sans-serif", "Times New Roman, Times, serif"]
-      },
+        },
       "textposition": ["top center", "middle left", "top center", "bottom center", "top right", "middle left", "bottom right", "bottom left", "top right", "top right"]
     }
 
@@ -1443,6 +1656,7 @@ def canada_map(column,n):
           },
           'clickmode': 'event+select',
           'dragmode': False,
+          'template' : "plotly",
           'margin': dict(l=30, r=10, b= 10),
           "title": "Canada: "+column,
           'title_x':0.5,
@@ -1486,6 +1700,7 @@ def update_figure(hoverData):
         color=colors['heading'],
         size=18
     ),
+    template = template,
     margin=dict(l=20, r=20),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
@@ -1508,6 +1723,7 @@ def update_figure(hoverData):
         size=18
     ),
     margin=dict(l=20, r=20),
+    template = template,
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     # fig = px.bar(province_df,x="Date",y="New Confirmed")
@@ -1530,6 +1746,7 @@ def update_figure(hoverData):
         size=18
     ),
     margin=dict(l=20, r=20),
+    template = template,
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
     return fig
@@ -1549,6 +1766,7 @@ def update_figure(hoverData):
         color=colors['heading'],
         size=18
     ),
+    template = template,
     margin=dict(l=20, r=20),
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],)
@@ -1568,13 +1786,13 @@ def update_figure(y_axis,top):
 
     if y_axis == 'Recovered':
         line_color = "#21D12B"
-        colorscale = "viridis"
+        colorscale = colorscales["Recovered"]
     elif y_axis == 'Death':
         line_color = "red"
-        colorscale = "reds"
+        colorscale = colorscales["Death"]
     else:
         line_color = "orange"
-        colorscale = "portland"
+        colorscale = colorscales["Confirmed"]
     # Copying the rows with rows ! = 0
     grouped_df = df.loc[df[y_axis] != 0].copy()
     grouped_df = grouped_df.sort_values(['Date'], ascending = True)
@@ -1666,6 +1884,7 @@ def update_figure(y_axis,top):
 
     fig.update_layout(annotations=annotations,
     title_x= 0.5,
+    template = template,
     titlefont= dict(
         color=colors['heading'],
         size=22
@@ -1681,15 +1900,15 @@ def update_figure(y_axis,top):
         [Input('tab-3-Dropdown3','value'),
         Input('tab-3-Dropdown4','value')])
 def update_figure(option,y_axis):
-    # colorscale = "portland"
+    # colorscale = colorscales["Confirmed"]
     if y_axis == 'Recovered':
-        colorscale = "viridis"
+        colorscale = colorscales["Recovered"]
     elif y_axis == 'Death':
-        colorscale = "reds"
+        colorscale = colorscales["Death"]
     elif y_axis == "Active":
-        colorscale = 'peach'
+        colorscale = colorscales["Active"]
     else:
-        colorscale = "portland"
+        colorscale = colorscales["Confirmed"]
 
 
     if option == 'Global':
@@ -1717,6 +1936,7 @@ def update_figure(option,y_axis):
                           color_continuous_midpoint=np.average(selected_df[y_axis], weights=selected_df[y_axis]))
     # fig.data[0].customdata[:, 0] = my_text
     fig.update_layout(
+    template=template,
     margin=dict(l=20, r=10, t=10, b=10))
     return fig
 
@@ -1726,13 +1946,13 @@ def update_figure(option,y_axis):
 def update_figure(option,y_axis):
 
     if y_axis == 'Recovered':
-        colorscale = "viridis"
+        colorscale = colorscales["Recovered"]
     elif y_axis == 'Death':
-        colorscale = "reds"
+        colorscale = colorscales["Death"]
     elif y_axis == "Active":
-        colorscale = 'peach'
+        colorscale = colorscales["Active"]
     else:
-        colorscale = "portland"
+        colorscale = colorscales["Confirmed"]
 
 
 
@@ -1752,6 +1972,7 @@ def update_figure(option,y_axis):
                   color_continuous_midpoint=np.average(selected_df[y_axis], weights=selected_df[y_axis]))
 
     fig.update_layout(
+    template=template,
     margin=dict(l=10, r=10, t=10, b=10, autoexpand = True),
     uniformtext_minsize=12, uniformtext_mode='hide')
     return fig
@@ -1789,13 +2010,13 @@ def update_figure(option,y_axis):
 
     if y_axis == 'New Recovered':
         line_color = "white"
-        colorscale = "viridis"
+        colorscale = colorscales["Recovered"]
     elif y_axis == 'New Death':
         line_color =colors['text1']
-        colorscale = "reds"
+        colorscale = colorscales["Death"]
     else:
         line_color = "white"
-        colorscale = "portland"
+        colorscale = colorscales["Confirmed"]
 
     y_ticks = ["Week "+ str(s) for s in weeknumber_of_dates]
     hover_text = ["Country: "+ option +"<br>"+"Date: "+d.strftime("%x")+"<br>"+y_axis+
@@ -1816,6 +2037,7 @@ def update_figure(option,y_axis):
     fig.add_trace(go.Scatter(
             x = weekdays_in_year,
             y = weeknumber_of_dates,
+            hoverinfo = "none",
             text = cell_text,
             mode = 'text',
             textposition = "middle center",
@@ -1851,6 +2073,7 @@ def update_figure(option,y_axis):
     	plot_bgcolor=colors['graph_bg_color'], #making grid appear black
         font = dict(color = colors['text1'], size =12),
         margin = dict(l=500,r=500,t=40,b=30),
+        template = template,
         # yaxis_nticks=len(set(months)),
         title_x= 0.5,
         titlefont= dict(
@@ -1997,6 +2220,7 @@ def update_figure(y_axis,countries):
 
     fig.update_layout(
     title= countries +" Countries : "+y_axis+" Cases",
+    template = template,
     # yaxis={'type': 'linear' if scale == 'Linear' else 'log',
     #     'autorange': True},
     paper_bgcolor=colors['graph_bg_color'],
@@ -2145,6 +2369,7 @@ def update_figure(scale, y_axis):
     paper_bgcolor=colors['graph_bg_color'],
     plot_bgcolor=colors['graph_bg_color'],
     title_x= 0.5,
+    template = template,
     # yaxis_type="log",
     titlefont= dict(
         color=colors['heading'],
@@ -2193,6 +2418,7 @@ def update_figure(cluster_num):
             color=colors['heading'],
             size=18
         ),
+        template = template,
         margin=dict(l=10, r=10),
         paper_bgcolor=colors['graph_bg_color'],
         plot_bgcolor=colors['graph_bg_color'],)
@@ -2248,6 +2474,7 @@ def update_figure(cluster_num):
             color=colors['heading'],
             size=18
         ),
+        template = template,
         margin=dict(l=10, r=10),
         paper_bgcolor=colors['graph_bg_color'],
         plot_bgcolor=colors['graph_bg_color'],)
@@ -2287,6 +2514,7 @@ def update_figure(cluster_num):
             color=colors['heading'],
             size=18
         ),
+        template = template,
         margin=dict(l=10, r=10),
         paper_bgcolor=colors['graph_bg_color'],
         plot_bgcolor=colors['graph_bg_color'],)
@@ -2354,6 +2582,7 @@ def update_figure(cluster_num):
             color=colors['heading'],
             size=18
         ),
+        template = template,
         margin=dict(l=10, r=10),
         paper_bgcolor=colors['graph_bg_color'],
         plot_bgcolor=colors['graph_bg_color'],)
@@ -2415,6 +2644,7 @@ def update_figure(cluster_num):
             color=colors['heading'],
             size=18
         ),
+        template = template,
         # margin=dict(l=10, r=10),
         paper_bgcolor=colors['graph_bg_color'],
         plot_bgcolor=colors['graph_bg_color'],)

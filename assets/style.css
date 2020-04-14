@@ -79,6 +79,7 @@
   .two.columns                    { width: 13.3333333333%; }
   .three.columns                  { width: 22%;            }
   .special.columns                { width: 25%;            }
+  .panel.columns                  { width: 26.505%;            }
   .four.columns                   { width: 30.6666666667%; }
   .five.columns                   { width: 39.3333333333%; }
   .six.columns                    { width: 48%;            }
@@ -141,11 +142,11 @@ body {
   line-height: 1.6;
   font-weight: 400;
   font-family: "Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  background-color: '#000000';
+  /* background-color: #111111; */
   /* color: rgb(50, 50, 50); */
   margin: 0;
   /* background-color: #1a1c23; */
-      color: #b2b2b2;
+  /* color: #b2b2b2; */
     /* height: 100vh;
      margin: 0; */
    }
@@ -196,7 +197,8 @@ body {
 
 
    .div-left-panel{
-     background-color: rgb(250, 250, 250);
+     /* background-color: rgb(250, 250, 250); */
+     background-color: #F1F1F1;
      color: #b2b2b2;
      margin: 0px;
      height:100%;
@@ -211,7 +213,9 @@ body {
    }
 
    .div-right-panel{
-     background-color: rgb(250, 250, 250);
+     /* background-color: rgb(250, 250, 250); */
+     background-color: #F1F1F1;
+
      color: #b2b2b2;
      height:100%;
      /*overflow-y: scroll;*/
