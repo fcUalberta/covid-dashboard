@@ -1,36 +1,23 @@
-# HWES example
-from statsmodels.tsa.arima_model import ARIMA
+"""
+Module for Weekly Forecasting using Auto Regression
+"""
 from random import random
-
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from random import random
-# SARIMA example
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-# contrived dataset
-# data = [x + random() for x in range(1, 100)]
-# print(data)
 def forecast(data):
+    """
+    Function to predict the next 7 values for the input data using SARIMAX
+    Auto regression function
+    """
     predictions = []
     for i in range(7):
-        # model = ARIMA(data, order=(1, 1, 1))
-        # model_fit = model.fit(disp=False,transparams=False)
-        # # make prediction
+        # Initializing the model
         model = SARIMAX(data, order=(1, 1, 1), seasonal_order=(1, 1, 1, 1),
-        trace=True, error_action="ignore")
+            trace=True, error_action="ignore")
+        # Fitting the model
         model_fit = model.fit(disp=False)
-
+        # Predicting the values one by one
         yhat = model_fit.predict(len(data), len(data))
-        # print(yhat)
         data.append(int(yhat))
+        # Appending each prediction to a list
         predictions.append(int(yhat))
     return predictions
-# data = [x + random() for x in range(1, 5)]
-# print(forecast(data))
-
-
-
-# def create_movingAverage(df):
-#
-#     df['SimpleMAvg'] = df.iloc[:,1].rolling(window=7).mean()
-#     df['CumulativeMAvg'] = df_T.expanding(min_periods=7).mean()
-#     df['ExponentialMAvg'] = df_T.iloc[:,0].ewm(span=40,adjust=False).mean()
