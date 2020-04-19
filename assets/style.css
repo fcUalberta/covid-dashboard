@@ -76,6 +76,8 @@
 
   .one.column,
   .one.columns                    { width: 4.66666666667%; }
+  .point.columns                    { width: 7.7%; }
+    .point1.columns                    { width: 9%; }
   .two.columns                    { width: 13.3333333333%; }
   .three.columns                  { width: 22%;            }
   .special.columns                { width: 25%;            }
