@@ -9,7 +9,7 @@ Building an one-stop place for all the trends, analytics and forecasting you nee
 
 ## Project Structure
 
-
+![GitHub Logo](/assets/project.png)
 
 
 ## Software Requirements
