@@ -23,6 +23,8 @@ Building an one-stop place for all the trends, analytics and forecasting you nee
 1. Check the path in clustering_dataload to verify if you had given the right path to cluster_data folder
 1. Run the application using python app.py
 
+Alternatively, you can also download the full source code with dependencies from here: http://tiny.cc/6j4cnz and perform step 1 and 5 from above. 
+
 ## References
 1. https://plot.ly/dash/
 1. https://plotly.com/python/
