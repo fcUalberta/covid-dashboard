@@ -19,7 +19,7 @@ Building an one-stop place for all the trends, analytics and forecasting you nee
 
 1. Create environment with requirements.txt
 1. Download the folder
-1. Download the cluster_data folder into the root folder for text data (tab 5) from here : 
+1. Download the cluster_data folder into the root folder for text data (tab 5) from here : http://tiny.cc/hjzcnz
 1. Check the path in clustering_dataload to verify if you had given the right path to cluster_data folder
 1. Run the application using python app.py
 
