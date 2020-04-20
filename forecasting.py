@@ -13,7 +13,7 @@ def forecast(data):
     predictions = []
     for i in range(7):
         # Initializing the model
-        model = SARIMAX(data, order=(1, 1, 1), seasonal_order=(1, 1, 1, 1),
+        model = SARIMAX(data, order=(1, 1, 1),
             trace=True, error_action="ignore")
         # Fitting the model
         model_fit = model.fit(disp=False)
