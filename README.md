@@ -1,7 +1,7 @@
 # Interactive Data Driven Dashboard with  Trends, Analytics and Forecasting for COVID-19
 
 ## About
-Building an one-stop place for all the trends, analytics and forecasting you need for understanding and keeping up with COVID-19 pandemic.  
+Building a one-stop place for all the trends, analytics and forecasting you need for understanding and keeping up with COVID-19 pandemic.  
 
 ## Data Source: 
 1. Quantitative data for tab 1-4 : https://data.humdata.org/dataset/novel-coronavirus-2019-ncov-cases
