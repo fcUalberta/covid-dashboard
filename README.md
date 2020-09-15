@@ -3,6 +3,9 @@
 ## About
 Building a one-stop place for all the trends, analytics and forecasting you need for understanding and keeping up with COVID-19 pandemic.  
 
+## Our Website: 
+http://covid19-ualberta.herokuapp.com/
+
 ## Data Source: 
 1. Quantitative data for tab 1-4 : https://data.humdata.org/dataset/novel-coronavirus-2019-ncov-cases
 1. Text dataset for tab 5: https://pages.semanticscholar.org/coronavirus-research
