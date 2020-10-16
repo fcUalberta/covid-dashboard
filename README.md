@@ -4,7 +4,7 @@
 Building a one-stop place for all the trends, analytics and forecasting you need for understanding and keeping up with COVID-19 pandemic.  
 
 ## Our Website: 
-http://covid19-ualberta.herokuapp.com/
+http://129.128.243.171/
 
 ## Data Source: 
 1. Quantitative data for tab 1-4 : https://data.humdata.org/dataset/novel-coronavirus-2019-ncov-cases
